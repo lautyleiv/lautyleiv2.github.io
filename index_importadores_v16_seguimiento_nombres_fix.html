@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Control de Planta</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;min-height:100vh;color:#1e293b;}
+input,select,button,textarea{font-family:inherit;}
+input:focus,select:focus,textarea:focus{outline:2px solid #6366f1;outline-offset:1px;}
+button:active{transform:scale(0.98);}
+::-webkit-scrollbar{width:7px;height:7px;}
+::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:999px;}
+.row-hover:hover td{background:rgba(99,102,241,.04)!important;}
+.tab-btn:hover{background:rgba(255,255,255,.12)!important;}
+mark{background:#fef08a;border-radius:2px;padding:0 1px;}
+@media (max-width:900px){
+  body{font-size:14px;}
+  table{font-size:12px;}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef}=React;
+
+/* ────────── UTILS ────────── */
+function makeId(p){return `${p}-${Math.random().toString(36).slice(2,9)}`;}
+function formatDateShort(date){
+  const dd=String(date.getDate()).padStart(2,'0');
+  const mm=String(date.getMonth()+1).padStart(2,'0');
+  const yy=String(date.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+function formatDateISO(date){
+  const yyyy=String(date.getFullYear());
+  const mm=String(date.getMonth()+1).padStart(2,'0');
+  const dd=String(date.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+function parseDateObj(value){
+  if(value===undefined||value===null||value==='')return null;
+  if(value instanceof Date && !isNaN(value))return new Date(value.getFullYear(),value.getMonth(),value.getDate(),12,0,0);
+  if(typeof value==='number' && Number.isFinite(value)){
+    const excelEpoch=new Date(Date.UTC(1899,11,30));
+    const d=new Date(excelEpoch.getTime()+Math.round(value)*86400000);
+    return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12,0,0);
+  }
+  const s=String(value).trim();
+  if(!s)return null;
+  if(/^\d{5}(?:\.\d+)?$/.test(s)){
+    const num=Number(s);
+    if(Number.isFinite(num)){
+      const excelEpoch=new Date(Date.UTC(1899,11,30));
+      const d=new Date(excelEpoch.getTime()+Math.round(num)*86400000);
+      return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),12,0,0);
+    }
+  }
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12,0,0);
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){
+    const a=Number(m[1]), b=Number(m[2]);
+    const year=Number(m[3].length===2?`20${m[3]}`:m[3]);
+    let day=a, month=b;
+    if(a>12 && b<=12){day=a; month=b;}
+    else if(b>12 && a<=12){month=a; day=b;}
+    else {day=a; month=b;}
+    const d=new Date(year,month-1,day,12,0,0);
+    if(!isNaN(d))return d;
+  }
+  const parsed=new Date(s);
+  if(!isNaN(parsed))return new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate(),12,0,0);
+  return null;
+}
+function todayValue(){return formatDateShort(new Date());}
+function fmtDate(ds){const d=parseDateObj(ds);return d?formatDateShort(d):(ds||'—');}
+function dateSortKey(value){
+  const d=parseDateObj(value);
+  if(!d)return '00000000';
+  const yyyy=String(d.getFullYear());
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  return `${yyyy}${mm}${dd}`;
+}
+function compareDateDesc(a,b){return dateSortKey(b).localeCompare(dateSortKey(a));}
+function compareDateAsc(a,b){return dateSortKey(a).localeCompare(dateSortKey(b));}
+function dateInRange(value,from,to){
+  const key=dateSortKey(value);
+  if(from && key<dateSortKey(from))return false;
+  if(to && key>dateSortKey(to))return false;
+  return true;
+}
+function cleanDateInput(value){return String(value||'').replace(/[^\d\/\-]/g,'').slice(0,10);}
+function normalizeDateInput(value,fallback=''){
+  const d=parseDateObj(value);
+  return d?formatDateShort(d):(fallback||cleanDateInput(value));
+}
+function toInputDate(value){
+  const d=parseDateObj(value);
+  return d?formatDateISO(d):'';
+}
+function fromInputDate(value,fallback=''){
+  if(!value)return '';
+  const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return `${m[3]}/${m[2]}/${m[1].slice(-2)}`;
+  return normalizeDateInput(value,fallback);
+}
+function getWeekNum(ds){
+  const d=parseDateObj(ds);
+  if(!d)return '';
+  const fj=new Date(d.getFullYear(),0,1,12,0,0);
+  return Math.ceil((Math.floor((d-fj)/86400000)+fj.getDay()+1)/7);
+}
+function normKey(v){return String(v??'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');}
+function normText(v){return String(v??'').trim();}
+
+function toIsoDate(value,fallback=''){
+  const d=parseDateObj(value);
+  return d?formatDateShort(d):(fallback||todayValue());
+}
+function nameTokens(name){
+  return String(name||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+}
+function findEmployeeMatch(employees,rawLegajo='',rawName=''){
+  const legajo=String(rawLegajo||'').trim();
+  if(legajo){
+    const exactByLegajo=employees.find(e=>String(e.legajo)===legajo);
+    if(exactByLegajo)return exactByLegajo;
+  }
+  const name=String(rawName||'').trim();
+  if(!name)return null;
+  const nk=normKey(name);
+  let exact=employees.find(e=>normKey(e.nombre)===nk);
+  if(exact)return exact;
+  let contains=employees.find(e=>normKey(e.nombre).includes(nk)||nk.includes(normKey(e.nombre)));
+  if(contains)return contains;
+  const srcAll=nameTokens(name);
+  const srcLong=srcAll.filter(t=>t.length>1);
+  const srcShort=srcAll.filter(t=>t.length===1);
+  let best=null;
+  let bestScore=-1;
+  employees.forEach(emp=>{
+    const empAll=nameTokens(emp.nombre);
+    const empLong=empAll.filter(t=>t.length>1);
+    let score=0;
+    if(srcAll[0]&&empAll[0]&&srcAll[0]===empAll[0])score+=4;
+    if(srcAll[srcAll.length-1]&&empAll[empAll.length-1]&&srcAll[srcAll.length-1]===empAll[empAll.length-1])score+=2;
+    const common=srcLong.filter(t=>empLong.includes(t)).length;
+    score+=common*2;
+    const initialMatches=srcShort.filter(t=>empLong.some(et=>et.startsWith(t))).length;
+    score+=initialMatches;
+    if(score>bestScore){bestScore=score;best=emp;}
+  });
+  const minScore=srcLong.length>=2?4:3;
+  return bestScore>=minScore?best:null;
+}
+
+function calcHours(e,s){if(!e||!s)return 0;const [sh,sm]=e.split(':').map(Number),[eh,em]=s.split(':').map(Number);let end=eh*60+em;const st=sh*60+sm;if(end<st)end+=1440;return Number(((end-st)/60).toFixed(2));}
+function attScore(s){if(s==='Presente')return 100;if(s==='Tarde')return 80;if(s==='Media jornada')return 60;if(s==='Ausente')return 0;return null;}
+function qualScore(q){if(q==='Sin errores')return 100;if(q==='1 error leve')return 85;if(q==='2 errores')return 70;if(q==='Error grave')return 40;return null;}
+function semColor(sc,tipo,est){if(tipo!=='Operario')return 'NA';if(est==='Ausente')return 'ROJO';if(sc===null)return 'NA';return sc>=85?'VERDE':sc>=70?'AMARILLO':'ROJO';}
+function defaultEntrada(turno){return turno==='Noche'?'22:00':'08:00';}
+function defaultSalida(turno){return turno==='Noche'?'06:00':'17:00';}
+function cleanTime(value){
+  const s=String(value??'').trim();
+  const m=s.match(/^(\d{1,2}):(\d{2})$/);
+  if(!m)return '';
+  const hh=String(Math.min(23,Math.max(0,Number(m[1])))).padStart(2,'0');
+  const mm=String(Math.min(59,Math.max(0,Number(m[2])))).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+function timeToMinutes(value){
+  const t=cleanTime(value);
+  if(!t)return null;
+  const [h,m]=t.split(':').map(Number);
+  return h*60+m;
+}
+function scheduleMinutes(turno,kind){
+  return timeToMinutes(kind==='entrada'?defaultEntrada(turno):defaultSalida(turno));
+}
+function relativeTimeDiff(actual,expected,kind){
+  const a=timeToMinutes(actual),e=timeToMinutes(expected);
+  if(a===null||e===null)return null;
+  let diff=a-e;
+  if(kind==='salida'&&diff<-720)diff+=1440;
+  if(kind==='entrada'&&diff>720)diff-=1440;
+  return diff;
+}
+function formatMinDiff(mins,positiveLabel,negativeLabel){
+  if(mins===null||mins===undefined)return 'Sin fichaje';
+  if(Math.abs(mins)<=5)return 'En hora';
+  return mins>0?`${positiveLabel} +${mins}m`:`${negativeLabel} ${mins}m`;
+}
+function entryStatus(rec){
+  const diff=relativeTimeDiff(rec?.entrada,defaultEntrada(rec?.turno),'entrada');
+  return formatMinDiff(diff,'Tarde','Temprano');
+}
+function exitStatus(rec){
+  const diff=relativeTimeDiff(rec?.salida,defaultSalida(rec?.turno),'salida');
+  return formatMinDiff(diff,'Se quedó','Se fue antes');
+}
+
+function sortByName(arr){return [...arr].sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||'')));}
+function weekColor(week){const colors=['#e0e7ff','#d1fae5','#fef3c7','#ffe4e6','#ede9fe','#e0f2fe','#ffedd5'];return colors[Math.abs(Number(week)||0)%colors.length];}
+function unique(arr){return Array.from(new Set(arr));}
+function dayTitle(value){
+  const d=parseDateObj(value);
+  if(!d)return fmtDate(value);
+  const days=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  return `${days[d.getDay()]} ${formatDateShort(d)}`;
+}
+function addDaysToDateStr(value,days){
+  const d=parseDateObj(value)||new Date();
+  d.setDate(d.getDate()+days);
+  return formatDateShort(d);
+}
+function daySectionColor(index){
+  const colors=['#c4b5fd','#fdba74','#86efac','#93c5fd','#f9a8d4','#fcd34d','#67e8f9'];
+  return colors[Math.abs(Number(index)||0)%colors.length];
+}
+
+const SAL_BAG_KG=25;
+const SAL_PALLET_BAGS=48;
+const SAL_DEFAULT_PURCHASE_PALLETS=22;
+const DEFAULT_SALT_PLANTS=['Deltacar','Alba','Cooperativa Parana','Santa Ines','Suipacha'];
+function defaultSaltPlants(){return DEFAULT_SALT_PLANTS.map((nombre,i)=>({id:`planta-${i+1}`,nombre,activa:true}));}
+function round2(n){return Number((Number(n||0)).toFixed(2));}
+function saltConversion(base,cantidad){
+  const qty=Number(String(cantidad??0).replace(',','.'))||0;
+  if(base==='kg')return {kg:round2(qty),bolsas:round2(qty/SAL_BAG_KG),pallets:round2(qty/(SAL_BAG_KG*SAL_PALLET_BAGS))};
+  if(base==='pallets'){
+    const bolsas=qty*SAL_PALLET_BAGS;
+    return {kg:round2(bolsas*SAL_BAG_KG),bolsas:round2(bolsas),pallets:round2(qty)};
+  }
+  const bolsas=qty;
+  return {kg:round2(bolsas*SAL_BAG_KG),bolsas:round2(bolsas),pallets:round2(bolsas/SAL_PALLET_BAGS)};
+}
+function saltTypeDirection(tipo){return ['Ingreso compra','Ajuste +'].includes(tipo)?1:-1;}
+function saltTypeMeta(tipo){
+  if(tipo==='Ingreso compra')return {bg:C.emeraldL,color:C.emeraldD,border:C.emerald,label:'Ingreso compra'};
+  if(tipo==='Consumo planta')return {bg:C.amberL,color:C.amberD,border:C.amber,label:'Consumo planta'};
+  if(tipo==='Salida frigorifico')return {bg:C.skyL,color:C.skyD,border:C.sky,label:'Salida frigorifico'};
+  if(tipo==='Ajuste +')return {bg:C.violetL,color:C.violetD,border:C.violet,label:'Ajuste +'};
+  if(tipo==='Ajuste -')return {bg:C.roseL,color:C.roseD,border:C.rose,label:'Ajuste -'};
+  return {bg:C.s100,color:C.s700,border:C.s300,label:tipo||'—'};
+}
+function buildSaltMove(fields){
+  const fecha=normalizeDateInput(fields.fecha,todayValue());
+  const base=fields.base||'bolsas';
+  const tipo=fields.tipo||'Consumo planta';
+  const cantidad=Number(String(fields.cantidad??0).replace(',','.'))||0;
+  const conv=saltConversion(base,cantidad);
+  return {
+    id:fields.id||makeId('sal'),
+    fecha,
+    tipo,
+    base,
+    cantidad,
+    kg:conv.kg,
+    bolsas:conv.bolsas,
+    pallets:conv.pallets,
+    signo:saltTypeDirection(tipo),
+    frigorifico:(fields.frigorifico||'').trim(),
+    sector:(fields.sector||'').trim(),
+    observaciones:(fields.observaciones||'').trim()
+  };
+}
+function normalizeLoadedSaltMove(move){return buildSaltMove({...move,id:move.id});}
+function signedSalt(move,field){return round2((Number(move.signo||1))*Number(move[field]||0));}
+
+function computeRecord(fields){
+  const e=fields.employee;
+  const estadoDia=fields.estadoDia||'Presente';
+  const entrada=cleanTime(fields.entrada);
+  const salida=cleanTime(fields.salida);
+  const produccionReal=Number(fields.produccionReal||0);
+  const calidad=fields.calidad||(e.tipoEmpleado==='Operario'?'Sin errores':'No aplica');
+  const horas=calcHours(entrada,salida);
+  const puntajeAsistencia=attScore(estadoDia);
+  const puntajeCalidad=qualScore(calidad);
+  const cumplimiento=e.metaDiaria>0?Number(((produccionReal/e.metaDiaria)*100).toFixed(0)):0;
+  const puntajeRendimiento=e.metaDiaria>0?Math.min(cumplimiento,120):null;
+  const puntajeFinal=e.tipoEmpleado!=='Operario'||puntajeAsistencia===null?null:Math.round(puntajeAsistencia*0.4+(puntajeRendimiento??0)*0.4+(puntajeCalidad??100)*0.2);
+  return {
+    id:fields.id||makeId('rec'),
+    fecha:fields.fecha,
+    semana:getWeekNum(fields.fecha),
+    legajo:e.legajo,
+    nombre:e.nombre,
+    sector:fields.sector||e.sector,
+    turno:e.turno,
+    tipoEmpleado:e.tipoEmpleado,
+    supervisor:e.supervisor,
+    estadoDia,
+    entrada,
+    salida,
+    horas,
+    presenteOperativo:e.tipoEmpleado==='Operario'&&['Presente','Tarde','Media jornada'].includes(estadoDia)?'Sí':'No',
+    produccionReal,
+    metaDiaria:Number(e.metaDiaria||0),
+    cumplimiento,
+    calidad,
+    puntajeAsistencia,
+    puntajeRendimiento,
+    puntajeCalidad,
+    puntajeFinal,
+    semaforo:semColor(puntajeFinal,e.tipoEmpleado,estadoDia),
+    observaciones:fields.observaciones||''
+  };
+}
+function upsertAttendance(records, employee, payload){
+  const existing=records.find(r=>r.fecha===payload.fecha&&String(r.legajo)===String(employee.legajo));
+  const next=computeRecord({
+    id:existing?.id,
+    employee,
+    fecha:payload.fecha,
+    estadoDia:payload.estadoDia,
+    entrada:payload.entrada,
+    salida:payload.salida,
+    produccionReal:existing?.produccionReal||0,
+    calidad:existing?.calidad||(employee.tipoEmpleado==='Operario'?'Sin errores':'No aplica'),
+    observaciones:[existing?.observaciones,payload.observaciones].filter(Boolean).join(existing?.observaciones&&payload.observaciones?' | ':'')
+  });
+  return existing?records.map(r=>r.id===existing.id?next:r):[next,...records];
+}
+
+function upsertProduction(records, employee, payload){
+  const existing=records.find(r=>r.fecha===payload.fecha&&String(r.legajo)===String(employee.legajo));
+  const next=computeRecord({
+    id:existing?.id,
+    employee,
+    fecha:payload.fecha,
+    sector:payload.sector||existing?.sector||employee.sector,
+    estadoDia:existing?.estadoDia||'Presente',
+    entrada:existing?.entrada||'',
+    salida:existing?.salida||'',
+    produccionReal:Number(payload.produccionReal||0),
+    calidad:payload.calidad||(employee.tipoEmpleado==='Operario'?'Sin errores':'No aplica'),
+    observaciones:[existing?.observaciones,payload.observaciones].filter(Boolean).join(existing?.observaciones&&payload.observaciones?' | ':'')
+  });
+  return existing?records.map(r=>r.id===existing.id?next:r):[next,...records];
+}
+
+function exportCsv(filename,headers,rows){
+  const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const csv=[headers.map(esc).join(','),...rows.map(r=>r.map(esc).join(','))].join('\n');
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+}
+function safeSheetName(name,fallback='Hoja'){
+  const cleaned=String(name||fallback).replace(/[\\\/?*\[\]:]/g,'-').trim();
+  const base=(cleaned||fallback).slice(0,31);
+  return base||fallback;
+}
+function setSheetColumnWidths(ws,rows){
+  if(!ws||!rows||!rows.length)return;
+  const isMatrix=Array.isArray(rows[0]);
+  const widths=[];
+  if(isMatrix){
+    rows.forEach(row=>{
+      (row||[]).forEach((cell,i)=>{
+        const len=String(cell??'').length;
+        widths[i]=Math.max(widths[i]||10,Math.min(42,len+2));
+      });
+    });
+  } else {
+    const headers=Object.keys(rows[0]||{});
+    headers.forEach((h,i)=>{widths[i]=Math.max(10,Math.min(42,String(h).length+2));});
+    rows.forEach(row=>{
+      headers.forEach((h,i)=>{
+        const len=String((row&&row[h])??'').length;
+        widths[i]=Math.max(widths[i]||10,Math.min(42,len+2));
+      });
+    });
+  }
+  ws['!cols']=widths.map(w=>({wch:w}));
+}
+function appendJsonSheet(wb,name,rows){
+  const data=(rows&&rows.length)?rows:[{Estado:'Sin datos'}];
+  const ws=XLSX.utils.json_to_sheet(data);
+  setSheetColumnWidths(ws,data);
+  XLSX.utils.book_append_sheet(wb,ws,safeSheetName(name));
+}
+function appendAoaSheet(wb,name,rows){
+  const data=(rows&&rows.length)?rows:[['Sin datos']];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  setSheetColumnWidths(ws,data);
+  XLSX.utils.book_append_sheet(wb,ws,safeSheetName(name));
+}
+function parseFlexibleFile(file, onData, onError){
+  if(!file){onError(['No seleccionaste archivo.']);return;}
+  const ext=(file.name||'').split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  if(['xlsx','xls','xlsm'].includes(ext)){
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        const data=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:true,dateNF:'dd/mm/yyyy'});
+        onData(data);
+      }catch(err){onError(['No se pudo leer el Excel.']);}
+    };
+    reader.readAsArrayBuffer(file);
+  }else{
+    reader.onload=e=>{
+      try{
+        const text=String(e.target.result||'');
+        const sep=text.includes(';')?';':(text.includes('\t')?'\t':',');
+        const lines=text.split(/\r?\n/).filter(l=>l.trim());
+        if(lines.length<2){onError(['Archivo vacío o sin datos.']);return;}
+        const headers=lines[0].split(sep).map(h=>h.replace(/"/g,'').trim());
+        const rows=lines.slice(1).map(line=>{const vals=line.split(sep).map(v=>v.replace(/"/g,'').trim());const obj={};headers.forEach((h,i)=>obj[h]=vals[i]??'');return obj;});
+        onData(rows);
+      }catch(err){onError(['No se pudo leer el archivo.']);}
+    };
+    reader.readAsText(file,'UTF-8');
+  }
+}
+
+
+function sheetObjectsByAliases(wb, aliases){
+  if(!wb||!wb.SheetNames)return [];
+  const aliasKeys=(aliases||[]).map(a=>normKey(a));
+  const sheetName=wb.SheetNames.find(name=>{
+    const nk=normKey(name);
+    return aliasKeys.some(a=>nk===a||nk.includes(a)||a.includes(nk));
+  });
+  if(!sheetName)return [];
+  const sheet=wb.Sheets[sheetName];
+  return XLSX.utils.sheet_to_json(sheet,{defval:'',raw:true,dateNF:'dd/mm/yyyy'});
+}
+function rowToNormalizedObject(row){
+  const out={};
+  Object.entries(row||{}).forEach(([k,v])=>out[normKey(k)]=normText(v));
+  return out;
+}
+function parseWorkbookEmployeeRow(row, defaultActive=true){
+  const o=rowToNormalizedObject(row);
+  if(!Object.values(o).some(Boolean))return null;
+  const tipoRaw=o.tipo||o.tipoempleado||'Operario';
+  const tipo=ETYPES.find(t=>normKey(t)===normKey(tipoRaw))||'Operario';
+  const turno=TURNOS.find(t=>normKey(t)===normKey(o.turno||''))||(o.turno||'Día');
+  const estado=normKey(o.estado||'');
+  const activo=estado?!(estado.includes('baja')||estado.includes('inactivo')||estado==='no'):defaultActive;
+  return {
+    id:makeId('emp'),
+    legajo:o.legajo||o.codigo||o.id||makeId('leg'),
+    nombre:o.nombre||o.empleado||o.operariosupervisor||`Empleado ${o.legajo||''}`.trim(),
+    sector:o.sector||'Sin sector',
+    turno,
+    tipoEmpleado:tipo,
+    supervisor:o.supervisor||'',
+    metaDiaria:Number(String(o.metadiaria||o.meta||0).replace(',','.'))||0,
+    activo
+  };
+}
+function parseWorkbookMovementRow(row){
+  const o=rowToNormalizedObject(row);
+  if(!Object.values(o).some(Boolean))return null;
+  return normalizeLoadedMovement({
+    id:makeId('mov'),
+    fecha:normalizeDateInput(o.fecha,todayValue()),
+    legajo:o.legajo||'',
+    nombre:o.nombre||'',
+    cambio:o.cambio||'Movimiento',
+    valorAnterior:o.antes||o.valoranterior||'-',
+    valorNuevo:o.despues||o.valornuevo||'-',
+    autoriza:o.autoriza||'Sistema',
+    activo:o.activo||'Sí',
+    observacion:o.observacion||o.observaciones||''
+  });
+}
+function parseWorkbookRecordRow(row, importedEmployees){
+  const o=rowToNormalizedObject(row);
+  if(!Object.values(o).some(Boolean))return null;
+  const legajo=o.legajo||'';
+  let emp=importedEmployees.find(e=>String(e.legajo)===String(legajo));
+  if(!emp)emp=findEmployeeMatch(importedEmployees,legajo,o.nombre||'');
+  if(!emp){
+    emp={
+      id:makeId('emp'),
+      legajo:legajo||makeId('leg'),
+      nombre:o.nombre||'Empleado',
+      sector:o.sector||'Sin sector',
+      turno:o.turno||'Día',
+      tipoEmpleado:o.tipo||'Operario',
+      supervisor:o.supervisor||'',
+      metaDiaria:Number(String(o.meta||o.metadiaria||0).replace(',','.'))||0,
+      activo:true
+    };
+  }
+  const rec=computeRecord({
+    id:makeId('rec'),
+    employee:emp,
+    fecha:normalizeDateInput(o.fecha,todayValue()),
+    estadoDia:o.estado||o.estadodia||'Presente',
+    entrada:cleanTime(o.entrada),
+    salida:cleanTime(o.salida),
+    produccionReal:Number(String(o.produccion||o.produccionreal||0).replace(',','.'))||0,
+    calidad:o.calidad|| (emp.tipoEmpleado==='Operario'?'Sin errores':'No aplica'),
+    observaciones:o.observaciones||'',
+    sector:o.sector||emp.sector
+  });
+  rec.semaforo=(o.semaforo||rec.semaforo||'NA').toUpperCase();
+  return normalizeLoadedRecord(rec);
+}
+function parseWorkbookSaltRow(row){
+  const o=rowToNormalizedObject(row);
+  if(!Object.values(o).some(Boolean))return null;
+  let base='bolsas';
+  let cantidad=Number(String(o.cantidad||'').replace(',','.'));
+  if(!Number.isFinite(cantidad)||cantidad===0){
+    if(o.bolsas){base='bolsas';cantidad=Number(String(o.bolsas).replace(',','.'))||0;}
+    else if(o.pallets||o.palets){base='pallets';cantidad=Number(String(o.pallets||o.palets).replace(',','.'))||0;}
+    else {base='kg';cantidad=Number(String(o.kg).replace(',','.'))||0;}
+  } else {
+    const baseRaw=normKey(o.base||'');
+    if(baseRaw.includes('pallet'))base='pallets';
+    else if(baseRaw==='kg')base='kg';
+    else base='bolsas';
+  }
+  return normalizeLoadedSaltMove({
+    id:makeId('sal'),
+    fecha:normalizeDateInput(o.fecha,todayValue()),
+    tipo:o.tipo||'Consumo planta',
+    base,
+    cantidad,
+    frigorifico:o.planta||o.frigorifico||'',
+    sector:o.sector||'',
+    observaciones:o.observaciones||''
+  });
+}
+function parseWorkbookPlantRow(row){
+  const o=rowToNormalizedObject(row);
+  if(!Object.values(o).some(Boolean))return null;
+  const nombre=o.planta||o.nombre||'';
+  if(!nombre)return null;
+  const estado=normKey(o.estado||'activa');
+  return {id:makeId('planta'),nombre,activa:!(estado.includes('inact')||estado.includes('baja'))};
+}
+
+
+/* ────────── STORAGE ────────── */
+const SK={e:'planta_emp_v10',m:'planta_mov_v10',r:'planta_rec_v10',s:'planta_sal_v1',sp:'planta_sal_plantas_v1'};
+function lsGet(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+
+/* ────────── EMPTY SEED ────────── */
+const IEMP=[];
+const IMOV=[];
+const IREC=[];
+const DAY_ST=['Presente','Tarde','Media jornada','Ausente','Franco','Licencia','Vacaciones'];
+const QUAL=['Sin errores','1 error leve','2 errores','Error grave','No aplica'];
+const TURNOS=['Día','Noche','Intermedio','Tarde','Cortado'];
+const ETYPES=['Operario','Supervisor','Administrativo','Mantenimiento','Otro'];
+
+/* ────────── COLORS ────────── */
+const C={
+  indigo:'#6366f1',indigoD:'#4338ca',indigoL:'#e0e7ff',
+  violet:'#8b5cf6',violetD:'#6d28d9',violetL:'#ede9fe',
+  emerald:'#10b981',emeraldD:'#047857',emeraldL:'#d1fae5',
+  amber:'#f59e0b',amberD:'#92400e',amberL:'#fef3c7',
+  rose:'#f43f5e',roseD:'#9f1239',roseL:'#ffe4e6',
+  sky:'#0ea5e9',skyD:'#0369a1',skyL:'#e0f2fe',
+  orange:'#f97316',orangeD:'#9a3412',orangeL:'#ffedd5',
+  s50:'#f8fafc',s100:'#f1f5f9',s200:'#e2e8f0',s300:'#cbd5e1',s400:'#94a3b8',s500:'#64748b',s600:'#475569',s700:'#334155',s800:'#1e293b',s900:'#0f172a',white:'#ffffff'
+};
+const CHART_COLORS=['#6366f1','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0ea5e9'];
+
+/* ────────── MICRO UI ────────── */
+function Badge({value}){
+  const v=(value||'').toUpperCase();
+  const cfg={VERDE:{bg:C.emeraldL,color:C.emeraldD,dot:C.emerald,label:'Verde'},AMARILLO:{bg:C.amberL,color:C.amberD,dot:C.amber,label:'Amarillo'},ROJO:{bg:C.roseL,color:C.roseD,dot:C.rose,label:'Rojo'},NA:{bg:C.s100,color:C.s500,dot:C.s400,label:'N/A'}};
+  const {bg,color,dot,label}=cfg[v]||cfg.NA;
+  return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',padding:'3px 10px',borderRadius:'999px',background:bg,color,fontSize:'12px',fontWeight:700}}><span style={{width:'7px',height:'7px',borderRadius:'50%',background:dot}}/>{label}</span>;
+}
+function StatusBadge({value}){
+  const colors={Presente:{bg:C.emeraldL,c:C.emeraldD},Tarde:{bg:C.amberL,c:C.amberD},'Media jornada':{bg:C.skyL,c:C.skyD},Ausente:{bg:C.roseL,c:C.roseD},Franco:{bg:C.s100,c:C.s500},Licencia:{bg:C.violetL,c:C.violetD},Vacaciones:{bg:C.orangeL,c:C.orangeD}};
+  const {bg,c}=colors[value]||{bg:C.s100,c:C.s500};
+  return <span style={{padding:'2px 9px',borderRadius:'999px',background:bg,color:c,fontSize:'11px',fontWeight:700}}>{value||'—'}</span>;
+}
+function KPI({label,value,bg,color,icon,sub}){
+  return <div style={{borderRadius:'12px',padding:'1rem 1.1rem',background:bg||C.white,border:`1px solid ${C.s200}`,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}><span style={{fontSize:'11px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.07em',lineHeight:1.3}}>{label}</span>{icon&&<span style={{fontSize:'16px'}}>{icon}</span>}</div>
+    <div style={{fontSize:'26px',fontWeight:800,color:color||C.s800,fontVariantNumeric:'tabular-nums',lineHeight:1}}>{value}</div>
+    {sub&&<div style={{fontSize:'11px',color:C.s400,marginTop:'4px'}}>{sub}</div>}
+  </div>;
+}
+function DataTable({headers,rows,searchQ=''}){
+  function hl(text){if(!searchQ||text===null||text===undefined)return text;const s=String(text);const idx=s.toLowerCase().indexOf(searchQ.toLowerCase());if(idx<0)return s;return <>{s.slice(0,idx)}<mark>{s.slice(idx,idx+searchQ.length)}</mark>{s.slice(idx+searchQ.length)}</>;}
+  return <div style={{overflowX:'auto',borderRadius:'12px',border:`1px solid ${C.s200}`,boxShadow:'0 1px 3px rgba(0,0,0,.04)'}}>
+    <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+      <thead><tr style={{background:`linear-gradient(90deg,${C.indigoL},${C.violetL})`}}>{headers.map((h,i)=><th key={i} style={{padding:'10px 13px',textAlign:'left',fontWeight:700,color:C.indigoD,whiteSpace:'nowrap',borderBottom:`1px solid ${C.s200}`,fontSize:'12px'}}>{h}</th>)}</tr></thead>
+      <tbody>{rows.length===0?<tr><td colSpan={headers.length} style={{padding:'28px',textAlign:'center',color:C.s400,fontSize:'13px'}}>Sin datos para mostrar</td></tr>:rows.map((row,ri)=><tr key={ri} className='row-hover' style={{borderBottom:`1px solid ${C.s100}`,background:ri%2===0?C.white:C.s50}}>{row.map((cell,ci)=><td key={ci} style={{padding:'10px 13px',color:C.s700,whiteSpace:'nowrap'}}>{typeof cell==='string'?hl(cell):cell}</td>)}</tr>)}</tbody>
+    </table>
+  </div>;
+}
+function Field({label,children}){return <label style={{display:'flex',flexDirection:'column'}}><span style={{fontSize:'11px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.07em',display:'block',marginBottom:'5px'}}>{label}</span>{children}</label>;}
+function Inp(props){return <input {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}/>;}
+function DateInp({value,onChange,min,max,...props}){return <Inp {...props} type='date' value={toInputDate(value)} min={min?toInputDate(min):undefined} max={max?toInputDate(max):undefined} onChange={e=>onChange&&onChange({target:{value:fromInputDate(e.target.value,value)}})}/>;}
+function Txt(props){return <textarea {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',minHeight:'84px',resize:'vertical',...(props.style||{})}}/>;}
+function Sel({children,...props}){return <select {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}>{children}</select>;}
+function BtnP({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'9px',border:'none',background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:C.white,fontSize:'13px',fontWeight:700,cursor:'pointer',boxShadow:'0 2px 8px rgba(99,102,241,.35)',display:'flex',alignItems:'center',gap:'7px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
+function BtnN({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'9px',border:`1px solid ${C.s300}`,background:C.white,color:C.s700,fontSize:'13px',fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
+function BtnD({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.rose}`,background:'transparent',color:C.rose,fontSize:'12px',fontWeight:700,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
+function BtnS({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.s300}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:600,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
+function SecH({title,subtitle,right}){return <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:'12px',marginBottom:'20px'}}><div><div style={{fontSize:'18px',fontWeight:800,color:C.indigoD,letterSpacing:'-0.02em'}}>{title}</div>{subtitle&&<div style={{fontSize:'13px',color:C.s500,marginTop:'3px'}}>{subtitle}</div>}</div>{right&&<div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>{right}</div>}</div>;}
+function Card({children,style={}}){return <div style={{background:C.white,borderRadius:'16px',border:`1px solid ${C.s200}`,padding:'1.25rem',boxShadow:'0 1px 4px rgba(0,0,0,.06)',...style}}>{children}</div>;}
+function CardTitle({children,color}){return <div style={{fontSize:'14px',fontWeight:800,color:color||C.indigoD,marginBottom:'14px',paddingBottom:'10px',borderBottom:`2px solid ${C.indigoL}`}}>{children}</div>;}
+function SLabel({children}){return <div style={{fontSize:'12px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'10px'}}>{children}</div>;}
+
+/* ────────── CHARTS ────────── */
+function normalizeChartNumber(v){
+  if(v===null||v===undefined||v==='')return null;
+  const num=typeof v==='number'?v:Number(String(v).replace(',','.'));
+  return Number.isFinite(num)?num:null;
+}
+function BarChart({labels,datasets,height=220,stacked=false}){
+  const ref=useRef();const chartRef=useRef();
+  useEffect(()=>{
+    if(!ref.current||typeof Chart==='undefined')return;
+    if(chartRef.current)chartRef.current.destroy();
+    const normalizedDatasets=(datasets||[]).map(ds=>({
+      ...ds,
+      data:(Array.isArray(ds.data)?ds.data:[]).map(normalizeChartNumber),
+      borderRadius:ds.borderRadius??4,
+      maxBarThickness:ds.maxBarThickness??42
+    }));
+    const ctx=ref.current.getContext('2d');
+    chartRef.current=new Chart(ctx,{
+      type:'bar',
+      data:{labels:[...(labels||[])],datasets:normalizedDatasets},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        animation:false,
+        plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}},tooltip:{mode:'index',intersect:false}},
+        interaction:{mode:'index',intersect:false},
+        scales:{
+          x:{stacked,offset:true,grid:{display:false},ticks:{font:{size:11},autoSkip:false,maxRotation:0,minRotation:0}},
+          y:{stacked,beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11}}}
+        }
+      }
+    });
+    return()=>chartRef.current?.destroy();
+  },[JSON.stringify(labels),JSON.stringify(datasets),stacked]);
+  return <div style={{height,position:'relative'}}><canvas ref={ref}/></div>;
+}
+function LineChart({labels,datasets,height=220,yMax}){
+  const ref=useRef();const chartRef=useRef();
+  useEffect(()=>{
+    if(!ref.current||typeof Chart==='undefined')return;
+    if(chartRef.current)chartRef.current.destroy();
+    const normalizedDatasets=(datasets||[]).map(ds=>{
+      const data=(Array.isArray(ds.data)?ds.data:[]).map(normalizeChartNumber);
+      return {
+        ...ds,
+        data,
+        borderWidth:ds.borderWidth??3,
+        pointRadius:ds.pointRadius??5,
+        pointHoverRadius:ds.pointHoverRadius??7,
+        pointHitRadius:ds.pointHitRadius??14,
+        pointBorderWidth:ds.pointBorderWidth??2,
+        spanGaps:true,
+        clip:false,
+        fill:ds.fill??false,
+        tension:ds.tension??0.3
+      };
+    });
+    const allValues=normalizedDatasets.flatMap(ds=>ds.data).filter(v=>typeof v==='number'&&Number.isFinite(v));
+    const maxData=allValues.length?Math.max(...allValues):0;
+    const finalMax=yMax?Math.max(yMax,Math.ceil(maxData*1.15)||yMax):Math.max(10,Math.ceil(maxData*1.15)||10);
+    const ctx=ref.current.getContext('2d');
+    chartRef.current=new Chart(ctx,{
+      type:'line',
+      data:{labels:[...(labels||[])],datasets:normalizedDatasets},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        animation:false,
+        layout:{padding:{top:18,right:12,left:8,bottom:6}},
+        plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}},tooltip:{mode:'index',intersect:false}},
+        interaction:{mode:'nearest',intersect:false},
+        elements:{point:{radius:5,hoverRadius:7},line:{tension:0.3}},
+        scales:{
+          x:{offset:false,grid:{display:false},ticks:{font:{size:11},autoSkip:false,maxRotation:0,minRotation:0}},
+          y:{beginAtZero:true,max:finalMax,grace:'8%',grid:{color:'#f1f5f9'},ticks:{font:{size:11}}}
+        }
+      }
+    });
+    return()=>chartRef.current?.destroy();
+  },[JSON.stringify(labels),JSON.stringify(datasets),yMax]);
+  return <div style={{height,position:'relative'}}><canvas ref={ref}/></div>;
+}
+function DonutChart({labels,data,colors,height=180}){
+  const ref=useRef();const chartRef=useRef();
+  useEffect(()=>{
+    if(!ref.current||typeof Chart==='undefined')return;
+    if(chartRef.current)chartRef.current.destroy();
+    const ctx=ref.current.getContext('2d');
+    chartRef.current=new Chart(ctx,{type:'doughnut',data:{labels:[...(labels||[])],datasets:[{data:(Array.isArray(data)?data:[]).map(v=>Number(v)||0),backgroundColor:colors,borderWidth:2,borderColor:C.white}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}}}});
+    return()=>chartRef.current?.destroy();
+  },[JSON.stringify(labels),JSON.stringify(data),JSON.stringify(colors)]);
+  return <div style={{height,position:'relative'}}><canvas ref={ref}/></div>;
+}
+
+/* ────────── IMPORT MODALS ────────── */
+function BaseModal({title,subtitle,color='indigo',onClose,children,maxWidth=760}){
+  const grad=color==='emerald'?`linear-gradient(135deg,${C.emerald},${C.indigo})`:`linear-gradient(135deg,${C.indigo},${C.violet})`;
+  return <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:'20px'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{background:C.white,borderRadius:'20px',width:'100%',maxWidth:`${maxWidth}px`,maxHeight:'92vh',overflow:'auto',boxShadow:'0 24px 64px rgba(0,0,0,.3)'}}>
+      <div style={{background:grad,borderRadius:'20px 20px 0 0',padding:'20px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div><div style={{fontSize:'16px',fontWeight:800,color:C.white}}>{title}</div><div style={{fontSize:'12px',color:'rgba(255,255,255,.7)',marginTop:'2px'}}>{subtitle}</div></div>
+        <button onClick={onClose} style={{background:'rgba(255,255,255,.2)',border:'none',color:C.white,width:'30px',height:'30px',borderRadius:'50%',cursor:'pointer',fontSize:'18px',fontWeight:700}}>×</button>
+      </div>
+      <div style={{padding:'24px'}}>{children}</div>
+    </div>
+  </div>;
+}
+
+function ImportEmpModal({onClose,onImport,existingEmployees=[]}){
+  const [step,setStep]=useState('upload');const [preview,setPreview]=useState([]);const [errors,setErrors]=useState([]);const [drag,setDrag]=useState(false);const fileRef=useRef();
+  function normalizeRow(raw){
+    const obj={};Object.entries(raw||{}).forEach(([k,v])=>{const nk=normKey(k);obj[nk]=nk==='fecha'?v:normText(v);});
+    if(Object.values(obj).every(v=>!v))return null;
+    const tipo=ETYPES.find(t=>normKey(t)===normKey(obj.tipoempleado||obj.tipo||''))||'Operario';
+    const turno=TURNOS.find(t=>normKey(t)===normKey(obj.turno||''))||'Día';
+    const legajo=obj.legajo||obj.codigo||obj.id||`AUTO-${Math.random().toString(36).slice(2,6)}`;
+    const nombre=obj.nombre||obj.empleado||obj.apellidoynombre||`Empleado ${legajo}`;
+    return {legajo,nombre,sector:obj.sector||obj.area||'Sin sector',turno,tipoEmpleado:tipo,supervisor:obj.supervisor||obj.jefe||'',metaDiaria:Number(String(obj.metadiaria||obj.meta||'0').replace(',','.'))||0,activo:true};
+  }
+  function handleData(data){const errs=[];const rows=[];(data||[]).forEach((raw,i)=>{const r=normalizeRow(raw);if(!r)return;rows.push(r);});setPreview(rows);setErrors(errs);if(rows.length>0)setStep('preview');else setErrors(['No se encontraron filas válidas.']);}
+  return <BaseModal title='📥 Importar empleados' subtitle='CSV, XLS o XLSX' onClose={onClose}>
+    {step==='upload'&&<div>
+      <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);parseFlexibleFile(e.dataTransfer.files[0],handleData,setErrors);}} onClick={()=>fileRef.current.click()} style={{border:`2.5px dashed ${drag?C.indigo:C.s300}`,borderRadius:'14px',padding:'36px',textAlign:'center',cursor:'pointer',background:drag?C.indigoL:C.s50,marginBottom:'16px'}}>
+        <div style={{fontSize:'40px',marginBottom:'10px'}}>📂</div>
+        <div style={{fontSize:'14px',fontWeight:700,color:C.s700}}>Arrastrá el archivo o hacé click para buscar</div>
+        <div style={{fontSize:'12px',color:C.s500,marginTop:'4px'}}>Columnas sugeridas: legajo, nombre, sector, turno, tipoEmpleado, supervisor, metaDiaria</div>
+        <input ref={fileRef} type='file' accept='.csv,.xlsx,.xls' style={{display:'none'}} onChange={e=>parseFlexibleFile(e.target.files[0],handleData,setErrors)}/>
+      </div>
+      {errors.length>0&&<div style={{padding:'12px',background:C.roseL,borderRadius:'10px'}}>{errors.map((e,i)=><div key={i} style={{fontSize:'12px',color:C.roseD}}>• {e}</div>)}</div>}
+    </div>}
+    {step==='preview'&&<div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}><div style={{fontWeight:700,color:C.s800}}>{preview.length} empleados para importar</div><BtnS onClick={()=>{setStep('upload');setPreview([]);setErrors([]);}}>← Cambiar</BtnS></div>
+      <div style={{maxHeight:'320px',overflow:'auto',borderRadius:'10px',border:`1px solid ${C.s200}`,marginBottom:'16px'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}><thead style={{position:'sticky',top:0,background:`linear-gradient(90deg,${C.indigoL},${C.violetL})`}}><tr>{['Legajo','Nombre','Sector','Turno','Tipo','Meta'].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'left',fontWeight:700,color:C.indigoD}}>{h}</th>)}</tr></thead><tbody>{preview.map((r,i)=><tr key={i} style={{borderBottom:`1px solid ${C.s100}`,background:i%2===0?C.white:C.s50}}><td style={{padding:'7px 10px',fontFamily:'monospace',color:C.indigoD}}>{r.legajo}</td><td style={{padding:'7px 10px',fontWeight:600}}>{r.nombre}</td><td style={{padding:'7px 10px'}}>{r.sector}</td><td style={{padding:'7px 10px'}}>{r.turno}</td><td style={{padding:'7px 10px'}}>{r.tipoEmpleado}</td><td style={{padding:'7px 10px'}}>{r.metaDiaria}</td></tr>)}</tbody></table>
+      </div>
+      <div style={{display:'flex',gap:'10px'}}><BtnP onClick={()=>{onImport(preview);setStep('done');}}>✅ Importar {preview.length} empleados</BtnP><BtnN onClick={onClose}>Cancelar</BtnN></div>
+    </div>}
+    {step==='done'&&<div style={{textAlign:'center',padding:'24px 0'}}><div style={{fontSize:'48px',marginBottom:'12px'}}>✅</div><div style={{fontSize:'16px',fontWeight:800,color:C.emeraldD,marginBottom:'8px'}}>Importación completada</div><BtnP onClick={onClose}>Cerrar</BtnP></div>}
+  </BaseModal>;
+}
+
+
+function ImportAttendanceModal({onClose,onImport,employees=[]}){
+  const [step,setStep]=useState('upload');const [preview,setPreview]=useState([]);const [errors,setErrors]=useState([]);const [drag,setDrag]=useState(false);const fileRef=useRef();
+
+  function handleData(data){
+    const rows=[];const errs=[];let lastDate=todayValue();
+    const normalized=(data||[]).map(raw=>{
+      const obj={};
+      Object.entries(raw||{}).forEach(([k,v])=>{const nk=normKey(k);obj[nk]=nk==='fecha'?v:normText(v);});
+      return obj;
+    }).filter(obj=>!Object.values(obj).every(v=>!v));
+
+    const looksLikeMarcaciones=normalized.length>0&&normalized.every(obj=>('empleado' in obj||'nombre' in obj)&&('fecha' in obj)&&('marcacion' in obj));
+    if(looksLikeMarcaciones){
+      const grouped=new Map();
+      normalized.forEach((obj,idx)=>{
+        const nombreRaw=obj.empleado||obj.nombre||'';
+        const fecha=obj.fecha?toIsoDate(obj.fecha,lastDate):lastDate;
+        if(obj.fecha)lastDate=fecha;
+        const emp=findEmployeeMatch(employees,obj.legajo||'',nombreRaw);
+        if(!emp){errs.push(`Fila ${idx+2}: "${nombreRaw}" no encontrado en personal`);return;}
+        const key=`${fecha}__${emp.legajo}`;
+        const mark=String(obj.marcacion||'').trim();
+        const mm=mark.match(/(\d{1,2}:\d{2}).*\((E|S)\)/i);
+        if(!grouped.has(key))grouped.set(key,{fecha,legajo:emp.legajo,nombre:emp.nombre,estadoDia:'Presente',entrada:'',salida:'',observaciones:'Importado desde fichaje'});
+        if(mm){
+          const hora=cleanTime(mm[1]);
+          const tipo=(mm[2]||'').toUpperCase();
+          const item=grouped.get(key);
+          const currentEntrada=item.entrada;
+          const currentSalida=item.salida;
+          if(tipo==='E'&&(!currentEntrada||timeToMinutes(hora)<timeToMinutes(currentEntrada)))item.entrada=hora;
+          if(tipo==='S'&&(!currentSalida||relativeTimeDiff(hora,currentSalida,'salida')>0))item.salida=hora;
+        }
+      });
+      const groupedRows=Array.from(grouped.values());
+      setPreview(groupedRows);setErrors(errs);if(groupedRows.length>0)setStep('preview');else setErrors(errs.length?errs:['No se encontraron filas válidas.']);
+      return;
+    }
+
+    normalized.forEach((obj,idx)=>{
+      const nombreRaw=obj.operariosupervisor||obj.nombre||obj.empleado||obj.apellidoynombre||'';
+      const isPresentesFechaFormat=('operariosupervisor' in obj)||('presente' in obj)||('ausente' in obj);
+
+      if(isPresentesFechaFormat){
+        const fecha=obj.fecha?toIsoDate(obj.fecha,lastDate):lastDate;
+        if(obj.fecha)lastDate=fecha;
+        if(!nombreRaw)return;
+        const emp=findEmployeeMatch(employees,obj.legajo||'',nombreRaw);
+        if(!emp){errs.push(`Fila ${idx+2}: "${nombreRaw}" no encontrado en personal`);return;}
+        const presMark=String(obj.presente||'').trim().toUpperCase();
+        const ausMark=String(obj.ausente||'').trim().toUpperCase();
+        let estadoDia='';
+        if(presMark==='1'||presMark==='SI'||presMark==='SÍ')estadoDia='Presente';
+        else if(ausMark==='X'||ausMark==='1'||ausMark==='SI'||ausMark==='SÍ')estadoDia='Ausente';
+        else if(obj.estado||obj.estadodia)estadoDia=DAY_ST.find(s=>normKey(s)===normKey(obj.estadodia||obj.estado||''))||'';
+        if(!estadoDia){errs.push(`Fila ${idx+2}: no se pudo interpretar si "${nombreRaw}" está presente o ausente`);return;}
+        rows.push({fecha,legajo:emp.legajo,nombre:emp.nombre,estadoDia,entrada:'',salida:'',observaciones:'Importado desde PRESENTES DE LA FECHA'});
+        return;
+      }
+
+      const fecha=obj.fecha?toIsoDate(obj.fecha,lastDate):lastDate;
+      if(obj.fecha)lastDate=fecha;
+      const emp=findEmployeeMatch(employees,obj.legajo||obj.codigo||obj.id||'',nombreRaw);
+      if(!emp){errs.push(`Fila ${idx+2}: empleado no encontrado`);return;}
+      const estadoDia=DAY_ST.find(s=>normKey(s)===normKey(obj.estadodia||obj.estado||''))||'Presente';
+      const entrada=cleanTime(obj.entrada||obj.e||obj.horariofichajeentrada||obj.horarioentrada||'');
+      const salida=cleanTime(obj.salida||obj.s||obj.horariofichajesalida||obj.horariosalida||'');
+      rows.push({fecha,legajo:emp.legajo,nombre:emp.nombre,estadoDia,entrada,salida,observaciones:obj.observaciones||''});
+    });
+    setPreview(rows);setErrors(errs);if(rows.length>0)setStep('preview');else setErrors(errs.length?errs:['No se encontraron filas válidas.']);
+  }
+
+  return <BaseModal title='🟢 Importar presentismo' subtitle='Entiende PRESENTES DE LA FECHA y también fichaje/marcaciones con E y S exactos' onClose={onClose} color='emerald'>
+    {step==='upload'&&<div>
+      <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);parseFlexibleFile(e.dataTransfer.files[0],handleData,setErrors);}} onClick={()=>fileRef.current.click()} style={{border:`2.5px dashed ${drag?C.emerald:C.s300}`,borderRadius:'14px',padding:'36px',textAlign:'center',cursor:'pointer',background:drag?C.emeraldL:C.s50,marginBottom:'16px'}}>
+        <div style={{fontSize:'40px',marginBottom:'10px'}}>🟢</div>
+        <div style={{fontSize:'14px',fontWeight:700,color:C.s700}}>Arrastrá el archivo PRESENTES DE LA FECHA o hacé click</div>
+        <div style={{fontSize:'12px',color:C.s500,marginTop:'4px'}}>Reconoce PRESENTES DE LA FECHA y también marcaciones con Empleado / Fecha / Marcacion</div>
+        <input ref={fileRef} type='file' accept='.csv,.xlsx,.xls' style={{display:'none'}} onChange={e=>parseFlexibleFile(e.target.files[0],handleData,setErrors)}/>
+      </div>
+      {errors.length>0&&<div style={{padding:'12px',background:C.roseL,borderRadius:'10px'}}>{errors.map((e,i)=><div key={i} style={{fontSize:'12px',color:C.roseD}}>• {e}</div>)}</div>}
+    </div>}
+    {step==='preview'&&<div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}><div style={{fontWeight:700,color:C.s800}}>{preview.length} filas para importar</div><BtnS onClick={()=>{setStep('upload');setPreview([]);setErrors([]);}}>← Cambiar</BtnS></div>
+      {errors.length>0&&<div style={{marginBottom:'12px',padding:'12px',background:C.amberL,borderRadius:'10px'}}>{errors.map((e,i)=><div key={i} style={{fontSize:'11px',color:C.amberD}}>• {e}</div>)}</div>}
+      <div style={{maxHeight:'320px',overflow:'auto',borderRadius:'10px',border:`1px solid ${C.s200}`,marginBottom:'16px'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}><thead style={{position:'sticky',top:0,background:`linear-gradient(90deg,${C.emeraldL},${C.indigoL})`}}><tr>{['Fecha','Legajo','Nombre','Estado','E','S'].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'left',fontWeight:700,color:C.emeraldD}}>{h}</th>)}</tr></thead><tbody>{preview.map((r,i)=><tr key={i} style={{borderBottom:`1px solid ${C.s100}`,background:i%2===0?C.white:C.s50}}><td style={{padding:'7px 10px'}}>{fmtDate(r.fecha)}</td><td style={{padding:'7px 10px',fontFamily:'monospace'}}>{r.legajo}</td><td style={{padding:'7px 10px',fontWeight:600}}>{r.nombre}</td><td style={{padding:'7px 10px'}}><StatusBadge value={r.estadoDia}/></td><td style={{padding:'7px 10px'}}>{r.entrada||'—'}</td><td style={{padding:'7px 10px'}}>{r.salida||'—'}</td></tr>)}</tbody></table>
+      </div>
+      <div style={{display:'flex',gap:'10px'}}><BtnP onClick={()=>{onImport(preview);setStep('done');}}>✅ Importar {preview.length}</BtnP><BtnN onClick={onClose}>Cancelar</BtnN></div>
+    </div>}
+    {step==='done'&&<div style={{textAlign:'center',padding:'24px 0'}}><div style={{fontSize:'48px',marginBottom:'12px'}}>✅</div><div style={{fontSize:'16px',fontWeight:800,color:C.emeraldD,marginBottom:'8px'}}>Presentismo importado</div><BtnP onClick={onClose}>Cerrar</BtnP></div>}
+  </BaseModal>;
+}
+
+
+
+function ImportDailyModal({onClose,onImport,employees=[]}){
+  const [step,setStep]=useState('upload');const [preview,setPreview]=useState([]);const [errors,setErrors]=useState([]);const [drag,setDrag]=useState(false);const fileRef=useRef();
+
+  function parseProduccionXDiaWorkbook(wb){
+    const rows=[];const errs=[];
+    wb.SheetNames.forEach(shName=>{
+      const sh=wb.Sheets[shName];
+      const matrix=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:false});
+      const headerIdx=matrix.findIndex(row=>{
+        const keys=(row||[]).map(c=>normKey(c));
+        return keys.includes('fecha')&&keys.includes('empleado')&&keys.includes('sector')&&keys.includes('cantidadproducida');
+      });
+      if(headerIdx<0)return;
+      const headers=(matrix[headerIdx]||[]).map(c=>normKey(c));
+      const ixFecha=headers.findIndex(h=>h==='fecha');
+      const ixEmpleado=headers.findIndex(h=>h==='empleado'||h==='operario');
+      const ixSector=headers.findIndex(h=>h==='sector');
+      const ixCantidad=headers.findIndex(h=>h==='cantidadproducida'||h==='cantidad'||h==='produccion'||h==='produccionreal');
+      const ixObs=headers.findIndex(h=>h==='observaciones'||h==='observacion');
+      for(let i=headerIdx+1;i<matrix.length;i++){
+        const row=matrix[i]||[];
+        const fechaRaw=row[ixFecha];
+        const nombreRaw=normText(row[ixEmpleado]);
+        const sectorRaw=normText(row[ixSector]);
+        const cantidadRaw=row[ixCantidad];
+        const observaciones=ixObs>=0?normText(row[ixObs]):'';
+        if(!fechaRaw&&!nombreRaw&&!sectorRaw&&!cantidadRaw)continue;
+        const cantidad=Number(String(cantidadRaw??'').replace(',','.'));
+        if(!nombreRaw||!sectorRaw||!Number.isFinite(cantidad))continue;
+        const emp=findEmployeeMatch(employees,'',nombreRaw);
+        if(!emp){errs.push(`Fila ${i+1}: "${nombreRaw}" no encontrado en personal`);continue;}
+        rows.push({fecha:toIsoDate(fechaRaw,todayValue()),legajo:emp.legajo,nombre:emp.nombre,sector:sectorRaw||emp.sector,produccionReal:cantidad,calidad:emp.tipoEmpleado==='Operario'?'Sin errores':'No aplica',observaciones:observaciones||'Importado desde PRODUCCIONXDIA'});
+      }
+    });
+    return {rows,errs};
+  }
+
+  function parseGenericRows(data){
+    const rows=[];const errs=[];let lastDate=todayValue();
+    (data||[]).forEach((raw,idx)=>{
+      const obj={};Object.entries(raw||{}).forEach(([k,v])=>{const nk=normKey(k);obj[nk]=nk==='fecha'?v:normText(v);});
+      if(Object.values(obj).every(v=>!v))return;
+      const fecha=obj.fecha?toIsoDate(obj.fecha,lastDate):lastDate;
+      if(obj.fecha)lastDate=fecha;
+      const nombreRaw=obj.nombre||obj.empleado||obj.apellidoynombre||'';
+      const emp=findEmployeeMatch(employees,obj.legajo||obj.codigo||obj.id||'',nombreRaw);
+      if(!emp){errs.push(`Fila ${idx+2}: empleado no encontrado`);return;}
+      const cantidad=Number(String(obj.cantidadproducida||obj.produccionreal||obj.produccion||obj.cantidad||'0').replace(',','.'));
+      if(!Number.isFinite(cantidad)){errs.push(`Fila ${idx+2}: cantidad inválida`);return;}
+      rows.push({fecha,legajo:emp.legajo,nombre:emp.nombre,sector:obj.sector||emp.sector,produccionReal:cantidad,calidad:QUAL.find(q=>normKey(q)===normKey(obj.calidad||''))||(emp.tipoEmpleado==='Operario'?'Sin errores':'No aplica'),observaciones:obj.observaciones||''});
+    });
+    return {rows,errs};
+  }
+
+  function handleFile(file){
+    if(!file){setErrors(['No seleccionaste archivo.']);return;}
+    const ext=(file.name||'').split('.').pop().toLowerCase();
+    if(['xlsx','xls','xlsm'].includes(ext)){
+      const reader=new FileReader();
+      reader.onload=e=>{
+        try{
+          const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+          const parsed=parseProduccionXDiaWorkbook(wb);
+          if(parsed.rows.length>0){setPreview(parsed.rows);setErrors(parsed.errs);setStep('preview');return;}
+          const sh=wb.Sheets[wb.SheetNames[0]];
+          const data=XLSX.utils.sheet_to_json(sh,{defval:'',raw:false});
+          const generic=parseGenericRows(data);
+          setPreview(generic.rows);setErrors(generic.errs);
+          if(generic.rows.length>0)setStep('preview'); else setErrors(generic.errs.length?generic.errs:['No se encontraron filas válidas.']);
+        }catch(err){setErrors(['No se pudo leer el Excel.']);}
+      };
+      reader.readAsArrayBuffer(file);
+    }else{
+      parseFlexibleFile(file,data=>{
+        const generic=parseGenericRows(data);
+        setPreview(generic.rows);setErrors(generic.errs);
+        if(generic.rows.length>0)setStep('preview'); else setErrors(generic.errs.length?generic.errs:['No se encontraron filas válidas.']);
+      },setErrors);
+    }
+  }
+
+  return <BaseModal title='📊 Importar carga diaria' subtitle='Entiende el archivo PRODUCCIONXDIA: Fecha, Empleado, Sector y Cantidad producida' onClose={onClose} color='emerald'>
+    {step==='upload'&&<div>
+      <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}} onClick={()=>fileRef.current.click()} style={{border:`2.5px dashed ${drag?C.emerald:C.s300}`,borderRadius:'14px',padding:'36px',textAlign:'center',cursor:'pointer',background:drag?C.emeraldL:C.s50,marginBottom:'16px'}}>
+        <div style={{fontSize:'40px',marginBottom:'10px'}}>📊</div>
+        <div style={{fontSize:'14px',fontWeight:700,color:C.s700}}>Arrastrá el archivo PRODUCCIONXDIA o hacé click</div>
+        <div style={{fontSize:'12px',color:C.s500,marginTop:'4px'}}>Reconoce la tabla con columnas Fecha / Empleado / Sector / Cantidad producida</div>
+        <input ref={fileRef} type='file' accept='.csv,.xlsx,.xls' style={{display:'none'}} onChange={e=>handleFile(e.target.files[0])}/>
+      </div>
+      {errors.length>0&&<div style={{padding:'12px',background:C.roseL,borderRadius:'10px'}}>{errors.map((e,i)=><div key={i} style={{fontSize:'12px',color:C.roseD}}>• {e}</div>)}</div>}
+    </div>}
+    {step==='preview'&&<div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}><div style={{fontWeight:700,color:C.s800}}>{preview.length} filas para importar</div><BtnS onClick={()=>{setStep('upload');setPreview([]);setErrors([]);}}>← Cambiar</BtnS></div>
+      {errors.length>0&&<div style={{marginBottom:'12px',padding:'12px',background:C.amberL,borderRadius:'10px'}}>{errors.map((e,i)=><div key={i} style={{fontSize:'11px',color:C.amberD}}>• {e}</div>)}</div>}
+      <div style={{maxHeight:'320px',overflow:'auto',borderRadius:'10px',border:`1px solid ${C.s200}`,marginBottom:'16px'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}><thead style={{position:'sticky',top:0,background:`linear-gradient(90deg,${C.emeraldL},${C.indigoL})`}}><tr>{['Fecha','Legajo','Nombre','Sector','Cantidad','Calidad'].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'left',fontWeight:700,color:C.emeraldD}}>{h}</th>)}</tr></thead><tbody>{preview.map((r,i)=><tr key={i} style={{borderBottom:`1px solid ${C.s100}`,background:i%2===0?C.white:C.s50}}><td style={{padding:'7px 10px'}}>{fmtDate(r.fecha)}</td><td style={{padding:'7px 10px',fontFamily:'monospace'}}>{r.legajo}</td><td style={{padding:'7px 10px',fontWeight:600}}>{r.nombre}</td><td style={{padding:'7px 10px'}}>{r.sector}</td><td style={{padding:'7px 10px',fontWeight:700,color:C.emeraldD}}>{r.produccionReal}</td><td style={{padding:'7px 10px'}}>{r.calidad}</td></tr>)}</tbody></table>
+      </div>
+      <div style={{display:'flex',gap:'10px'}}><BtnP onClick={()=>{onImport(preview);setStep('done');}}>✅ Importar {preview.length}</BtnP><BtnN onClick={onClose}>Cancelar</BtnN></div>
+    </div>}
+    {step==='done'&&<div style={{textAlign:'center',padding:'24px 0'}}><div style={{fontSize:'48px',marginBottom:'12px'}}>✅</div><div style={{fontSize:'16px',fontWeight:800,color:C.emeraldD,marginBottom:'8px'}}>Carga importada</div><BtnP onClick={onClose}>Cerrar</BtnP></div>}
+  </BaseModal>;
+}
+
+
+function normalizeLoadedRecord(r){
+  const fecha=toIsoDate(r?.fecha,todayValue());
+  return {...r,fecha,semana:getWeekNum(fecha)};
+}
+function normalizeLoadedMovement(m){
+  return {...m,fecha:toIsoDate(m?.fecha,todayValue())};
+}
+
+/* ────────── APP ────────── */
+function App(){
+  const [employees,setEmployees]=useState(()=>lsGet(SK.e,IEMP));
+  const [isMobile,setIsMobile]=useState(typeof window!=='undefined'?window.innerWidth<=900:false);
+  useEffect(()=>{
+    const onResize=()=>setIsMobile(window.innerWidth<=900);
+    onResize();
+    window.addEventListener('resize',onResize);
+    return ()=>window.removeEventListener('resize',onResize);
+  },[]);
+  const gridCols=(desktop,mobile='1fr')=>isMobile?mobile:desktop;
+  const [movements,setMovements]=useState(()=>lsGet(SK.m,IMOV).map(normalizeLoadedMovement));
+  const [records,setRecords]=useState(()=>lsGet(SK.r,IREC).map(normalizeLoadedRecord));
+  const [saltMoves,setSaltMoves]=useState(()=>lsGet(SK.s,[]).map(normalizeLoadedSaltMove));
+  const [tab,setTab]=useState('DASHBOARD_HOY');
+  const [showEmpImport,setShowEmpImport]=useState(false);
+  const [showAttendanceImport,setShowAttendanceImport]=useState(false);
+  const [showDailyImport,setShowDailyImport]=useState(false);
+  const [globalSearch,setGlobalSearch]=useState('');
+  const [filters,setFilters]=useState({fecha:todayValue(),sector:'Todos',turno:'Todos',supervisor:'Todos'});
+  const [weekFilter,setWeekFilter]=useState('Todas');
+  const emptyEmp={id:null,legajo:'',nombre:'',sector:'',turno:'Día',tipoEmpleado:'Operario',supervisor:'',metaDiaria:'0',activo:true};
+  const [empForm,setEmpForm]=useState(emptyEmp);
+  const [presentForm,setPresentForm]=useState({fecha:todayValue(),legajo:'',estadoDia:'Presente',entrada:'',salida:'',observaciones:''});
+  const [dailyForm,setDailyForm]=useState({fecha:todayValue(),legajo:'',produccionReal:'',calidad:'Sin errores',observaciones:''});
+  const [fichaLeg,setFichaLeg]=useState('');
+  const [compareSelect,setCompareSelect]=useState('');
+  const [compareLegs,setCompareLegs]=useState([]);
+  const [histFilters,setHistFilters]=useState({texto:'',tipo:'Todos',fechaDesde:'',fechaHasta:'',semana:'Todas',estado:'Todos',sector:'Todos'});
+  const [dashboardExpanded,setDashboardExpanded]=useState(false);
+  const [dashboardRange,setDashboardRange]=useState({desde:'',hasta:''});
+  const [presentListFilters,setPresentListFilters]=useState({fecha:todayValue(),legajo:'Todos'});
+  const [dailyListFilters,setDailyListFilters]=useState({fecha:todayValue(),legajo:'Todos'});
+  const [saltFilters,setSaltFilters]=useState({fechaDesde:'',fechaHasta:'',tipo:'Todos',texto:'',planta:'Todas'});
+  const [saltForm,setSaltForm]=useState({id:'',fecha:todayValue(),tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS),frigorifico:'',sector:'',observaciones:''});
+  const [saltPlants,setSaltPlants]=useState(()=>lsGet(SK.sp,defaultSaltPlants()));
+  const [newSaltPlant,setNewSaltPlant]=useState('');
+  const fullReportInputRef=useRef(null);
+
+  useEffect(()=>lsSet(SK.e,employees),[employees]);
+  useEffect(()=>lsSet(SK.m,movements),[movements]);
+  useEffect(()=>lsSet(SK.r,records),[records]);
+  useEffect(()=>lsSet(SK.s,saltMoves),[saltMoves]);
+  useEffect(()=>lsSet(SK.sp,saltPlants),[saltPlants]);
+  useEffect(()=>{if(!saltPlants||!saltPlants.length)setSaltPlants(defaultSaltPlants());},[]);
+  useEffect(()=>{
+    const active=sortByName(employees.filter(e=>e.activo));
+    if(active.length){
+      if(!presentForm.legajo||!active.some(e=>e.legajo===presentForm.legajo))setPresentForm(p=>({...p,legajo:active[0].legajo}));
+      if(!dailyForm.legajo||!active.some(e=>e.legajo===dailyForm.legajo))setDailyForm(p=>({...p,legajo:active[0].legajo,calidad:active[0].tipoEmpleado==='Operario'?'Sin errores':'No aplica'}));
+      if(!fichaLeg||!employees.some(e=>e.legajo===fichaLeg))setFichaLeg(active[0].legajo);
+      if(!compareSelect||!active.some(e=>e.legajo===compareSelect)||compareSelect===fichaLeg){const next=active.find(e=>e.legajo!==fichaLeg);setCompareSelect(next?.legajo||'');}
+    } else {
+      setPresentForm(p=>({...p,legajo:''}));setDailyForm(p=>({...p,legajo:''}));setFichaLeg('');setCompareSelect('');setCompareLegs([]);
+    }
+  },[employees,fichaLeg]);
+  useEffect(()=>{setCompareLegs(prev=>prev.filter(l=>l!==fichaLeg&&employees.some(e=>e.legajo===l&&e.activo)));},[fichaLeg,employees]);
+  useEffect(()=>{
+    if((!dashboardRange.desde&&!dashboardRange.hasta)&&records.length){
+      const dates=unique(records.map(r=>r.fecha)).sort(compareDateAsc);
+      const hasta=dates[dates.length-1];
+      const desde=dates[Math.max(0,dates.length-7)]||hasta;
+      setDashboardRange({desde,hasta});
+    }
+  },[records,dashboardRange.desde,dashboardRange.hasta]);
+
+  const activeEmployees=useMemo(()=>sortByName(employees.filter(e=>e.activo)),[employees]);
+  const inactiveEmployees=useMemo(()=>sortByName(employees.filter(e=>!e.activo)),[employees]);
+  const sectors=useMemo(()=>sortByName(unique(activeEmployees.map(e=>e.sector)).map(s=>({nombre:s}))).map(x=>x.nombre),[activeEmployees]);
+  const turnos_=useMemo(()=>sortByName(unique(activeEmployees.map(e=>e.turno)).map(s=>({nombre:s}))).map(x=>x.nombre),[activeEmployees]);
+  const supervisors=useMemo(()=>sortByName(unique(activeEmployees.map(e=>e.supervisor||'Sin supervisor')).map(s=>({nombre:s}))).map(x=>x.nombre),[activeEmployees]);
+  const activeSaltPlants=useMemo(()=>sortByName((saltPlants||[]).filter(p=>p.activa)),[saltPlants]);
+  const inactiveSaltPlants=useMemo(()=>sortByName((saltPlants||[]).filter(p=>!p.activa)),[saltPlants]);
+  const allWeeks=useMemo(()=>unique(records.map(r=>String(r.semana))).filter(Boolean).sort((a,b)=>Number(b)-Number(a)),[records]);
+
+  const dashboardDateOptions=useMemo(()=>unique(records.map(r=>r.fecha)).sort(compareDateAsc),[records]);
+  const filteredRecords=useMemo(()=>records.filter(r=>dateInRange(r.fecha,dashboardRange.desde,dashboardRange.hasta)&&(filters.sector==='Todos'||r.sector===filters.sector)&&(filters.turno==='Todos'||r.turno===filters.turno)&&(filters.supervisor==='Todos'||(r.supervisor||'Sin supervisor')===filters.supervisor)),[records,dashboardRange,filters]);
+  const searchedRecords=useMemo(()=>{if(!globalSearch.trim())return records;const q=globalSearch.toLowerCase();return records.filter(r=>[r.fecha,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.observaciones].join(' ').toLowerCase().includes(q));},[records,globalSearch]);
+
+  const dashboardKpis=useMemo(()=>{
+    const present=filteredRecords.filter(r=>['Presente','Tarde','Media jornada'].includes(r.estadoDia)).length;
+    const absent=filteredRecords.filter(r=>r.estadoDia==='Ausente').length;
+    const ops=filteredRecords.filter(r=>r.presenteOperativo==='Sí');
+    return {
+      total:filteredRecords.length,
+      presentes:present,
+      ausentes:absent,
+      operativos:ops.length,
+      rend:ops.length?`${Math.round(ops.reduce((a,r)=>a+r.cumplimiento,0)/ops.length)}%`:'—',
+      verdes:filteredRecords.filter(r=>r.semaforo==='VERDE').length,
+      amarillos:filteredRecords.filter(r=>r.semaforo==='AMARILLO').length,
+      rojos:filteredRecords.filter(r=>r.semaforo==='ROJO').length,
+    };
+  },[filteredRecords]);
+
+  const alerts=useMemo(()=>{const out=[];filteredRecords.forEach(r=>{if(r.estadoDia==='Ausente')out.push({t:'danger',txt:`${r.nombre} ausente`});if(r.tipoEmpleado==='Operario'&&r.cumplimiento>0&&r.cumplimiento<80)out.push({t:'warn',txt:`${r.nombre} bajo 80% de meta`});if(r.calidad==='Error grave'||r.calidad==='2 errores')out.push({t:'danger',txt:`Revisar calidad de ${r.nombre}`});});return out.slice(0,8);},[filteredRecords]);
+
+  const weekly=useMemo(()=>{
+    const map=new Map();
+    records.forEach(r=>{
+      const key=`${r.semana}-${r.legajo}`;
+      if(!map.has(key))map.set(key,{semana:r.semana,legajo:r.legajo,nombre:r.nombre,sector:r.sector,prog:0,pres:0,tarde:0,ausente:0,cumSum:0,cumCount:0,err:0,puntajeSum:0,puntajeCount:0});
+      const it=map.get(key);
+      if(!['Franco','Licencia','Vacaciones'].includes(r.estadoDia))it.prog++;
+      if(['Presente','Tarde','Media jornada'].includes(r.estadoDia))it.pres++;
+      if(r.estadoDia==='Tarde')it.tarde++;
+      if(r.estadoDia==='Ausente')it.ausente++;
+      if(r.tipoEmpleado==='Operario'&&r.metaDiaria>0){it.cumSum+=r.cumplimiento;it.cumCount++;}
+      if(r.calidad==='1 error leve')it.err++;
+      if(r.calidad==='2 errores')it.err+=2;
+      if(r.calidad==='Error grave')it.err+=3;
+      if(r.puntajeFinal!==null){it.puntajeSum+=r.puntajeFinal;it.puntajeCount++;}
+    });
+    return Array.from(map.values()).map(it=>{const asistencia=it.prog?Math.round((it.pres/it.prog)*100):0;const rendimiento=it.cumCount?Math.round(it.cumSum/it.cumCount):0;const puntaje=it.puntajeCount?Math.round(it.puntajeSum/it.puntajeCount):null;return {...it,asistencia,rendimiento,puntaje,sem:semColor(puntaje,'Operario',asistencia===0?'Ausente':'Presente')};}).sort((a,b)=>Number(b.semana)-Number(a.semana)||a.nombre.localeCompare(b.nombre));
+  },[records]);
+  const weeklyFiltered=useMemo(()=>weekFilter==='Todas'?weekly:weekly.filter(w=>String(w.semana)===String(weekFilter)),[weekly,weekFilter]);
+  const weeklyGrouped=useMemo(()=>{const groups={};weeklyFiltered.forEach(it=>{groups[it.semana]=groups[it.semana]||[];groups[it.semana].push(it);});return Object.entries(groups).sort((a,b)=>Number(b[0])-Number(a[0]));},[weeklyFiltered]);
+
+  const fichaEmp=useMemo(()=>employees.find(e=>e.legajo===fichaLeg)||null,[employees,fichaLeg]);
+  const fichaRecs=useMemo(()=>records.filter(r=>r.legajo===fichaLeg).sort((a,b)=>a.fecha.localeCompare(b.fecha)),[records,fichaLeg]);
+  const fichaStats=useMemo(()=>{const oper=fichaRecs.filter(r=>r.tipoEmpleado==='Operario');const prog=fichaRecs.filter(r=>!['Franco','Licencia','Vacaciones'].includes(r.estadoDia)).length;const pres=fichaRecs.filter(r=>['Presente','Tarde','Media jornada'].includes(r.estadoDia)).length;const avg=oper.length?Math.round(oper.reduce((a,r)=>a+(r.puntajeFinal||0),0)/oper.length):null;return {asistencia:prog?`${Math.round((pres/prog)*100)}%`:'0%',prodProm:oper.length?Math.round(oper.reduce((a,r)=>a+r.produccionReal,0)/oper.length):0,cumplProm:oper.length?`${Math.round(oper.reduce((a,r)=>a+r.cumplimiento,0)/oper.length)}%`:'0%',sem:semColor(avg,fichaEmp?.tipoEmpleado||'Operario','Presente')};},[fichaRecs,fichaEmp]);
+  const compareEmployees=useMemo(()=>[fichaLeg,...compareLegs].filter(Boolean),[fichaLeg,compareLegs]);
+
+  const dashboardDailySummary=useMemo(()=>{
+    const grouped={};
+    filteredRecords.forEach(r=>{
+      grouped[r.fecha]=grouped[r.fecha]||{fecha:r.fecha,items:[],presentes:0,ausentes:0,tardes:0,horasSum:0,horasCount:0,prodSum:0,prodCount:0,cumSum:0,cumCount:0};
+      const day=grouped[r.fecha];
+      day.items.push(r);
+      if(['Presente','Tarde','Media jornada'].includes(r.estadoDia))day.presentes++;
+      if(r.estadoDia==='Ausente')day.ausentes++;
+      if(r.estadoDia==='Tarde')day.tardes++;
+      if(r.horas>0){day.horasSum+=r.horas;day.horasCount++;}
+      if(r.produccionReal>0){day.prodSum+=r.produccionReal;day.prodCount++;}
+      if(r.tipoEmpleado==='Operario'){day.cumSum+=r.cumplimiento;day.cumCount++;}
+    });
+    return Object.values(grouped).sort((a,b)=>compareDateAsc(a.fecha,b.fecha)).map(day=>({
+      ...day,
+      total:day.items.length,
+      avgHoras:day.horasCount?Number((day.horasSum/day.horasCount).toFixed(1)):0,
+      avgProd:day.prodCount?Math.round(day.prodSum/day.prodCount):0,
+      avgCumpl:day.cumCount?Math.round(day.cumSum/day.cumCount):0,
+      avgAsistencia:day.items.length?Math.round((day.presentes/day.items.length)*100):0
+    }));
+  },[filteredRecords]);
+
+  const dashboardPeriodAverages=useMemo(()=>{
+    const operRecords=filteredRecords.filter(r=>r.tipoEmpleado==='Operario');
+    return {
+      asistencia:filteredRecords.length?Math.round((filteredRecords.filter(r=>['Presente','Tarde','Media jornada'].includes(r.estadoDia)).length/filteredRecords.length)*100):0,
+      horas:filteredRecords.filter(r=>r.horas>0).length?Number((filteredRecords.filter(r=>r.horas>0).reduce((a,r)=>a+r.horas,0)/filteredRecords.filter(r=>r.horas>0).length).toFixed(1)):0,
+      produccion:operRecords.filter(r=>r.produccionReal>0).length?Math.round(operRecords.filter(r=>r.produccionReal>0).reduce((a,r)=>a+r.produccionReal,0)/operRecords.filter(r=>r.produccionReal>0).length):0,
+      cumplimiento:operRecords.length?Math.round(operRecords.reduce((a,r)=>a+r.cumplimiento,0)/operRecords.length):0,
+      dias:dashboardDailySummary.length
+    };
+  },[filteredRecords,dashboardDailySummary]);
+
+  const dashboardSaltStats=useMemo(()=>{
+    const relevant=saltMoves.filter(m=>m.tipo==='Consumo planta'&&dateInRange(m.fecha,dashboardRange.desde,dashboardRange.hasta)&&(filters.sector==='Todos'||(m.sector||'Sin sector')===filters.sector));
+    const byDate={};
+    relevant.forEach(m=>{byDate[m.fecha]=(byDate[m.fecha]||0)+Number(m.kg||0);});
+    const dates=Object.keys(byDate).sort(compareDateAsc);
+    const totalKg=round2(relevant.reduce((a,m)=>a+Number(m.kg||0),0));
+    const dayCount=dashboardDailySummary.length||dates.length;
+    const avgKg=dayCount?round2(totalKg/dayCount):0;
+    return {
+      totalKg,
+      avgKg,
+      avgBolsas:round2(avgKg/SAL_BAG_KG),
+      avgPallets:round2(avgKg/(SAL_BAG_KG*SAL_PALLET_BAGS)),
+      labels:dates.map(fmtDate),
+      data:dates.map(d=>round2(byDate[d]))
+    };
+  },[saltMoves,dashboardRange,filters.sector,dashboardDailySummary]);
+
+  const dashboardCharts=useMemo(()=>({
+    labels:dashboardDailySummary.map(day=>fmtDate(day.fecha)),
+    attendance:dashboardDailySummary.map(day=>({presentes:day.presentes,tardes:day.tardes,ausentes:day.ausentes})),
+    perf:dashboardDailySummary.map(day=>day.avgCumpl),
+    prod:dashboardDailySummary.map(day=>day.avgProd),
+    hours:dashboardDailySummary.map(day=>day.avgHoras),
+    assist:dashboardDailySummary.map(day=>day.avgAsistencia)
+  }),[dashboardDailySummary]);
+
+  const presentTableRecords=useMemo(()=>records.filter(r=>(!presentListFilters.fecha||r.fecha===presentListFilters.fecha)&&(presentListFilters.legajo==='Todos'||r.legajo===presentListFilters.legajo)).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre))),[records,presentListFilters]);
+  const dailyTableRecords=useMemo(()=>records.filter(r=>(!dailyListFilters.fecha||r.fecha===dailyListFilters.fecha)&&(dailyListFilters.legajo==='Todos'||r.legajo===dailyListFilters.legajo)).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre))),[records,dailyListFilters]);
+
+  const saltPreview=useMemo(()=>buildSaltMove(saltForm),[saltForm]);
+  const saltFiltered=useMemo(()=>saltMoves.filter(m=>{
+    if(saltFilters.tipo!=='Todos'&&m.tipo!==saltFilters.tipo)return false;
+    if(saltFilters.planta!=='Todas'&&(m.frigorifico||'')!==saltFilters.planta)return false;
+    if(!dateInRange(m.fecha,saltFilters.fechaDesde,saltFilters.fechaHasta))return false;
+    const q=saltFilters.texto.trim().toLowerCase();
+    if(q&&!([m.fecha,m.tipo,m.frigorifico,m.sector,m.observaciones,m.kg,m.bolsas,m.pallets].join(' ').toLowerCase().includes(q)))return false;
+    return true;
+  }).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.tipo).localeCompare(String(b.tipo))),[saltMoves,saltFilters]);
+  const saltSummary=useMemo(()=>{
+    const stockKg=round2(saltMoves.reduce((a,m)=>a+signedSalt(m,'kg'),0));
+    const ing=saltFiltered.filter(m=>m.tipo==='Ingreso compra'||m.tipo==='Ajuste +').reduce((a,m)=>a+Number(m.kg||0),0);
+    const con=saltFiltered.filter(m=>m.tipo==='Consumo planta').reduce((a,m)=>a+Number(m.kg||0),0);
+    const sal=saltFiltered.filter(m=>m.tipo==='Salida frigorifico').reduce((a,m)=>a+Number(m.kg||0),0);
+    return {
+      stockKg,
+      stockBolsas:round2(stockKg/SAL_BAG_KG),
+      stockPallets:round2(stockKg/(SAL_BAG_KG*SAL_PALLET_BAGS)),
+      ingresadoKg:round2(ing),
+      consumidoKg:round2(con),
+      salidaKg:round2(sal),
+      compras:saltMoves.filter(m=>m.tipo==='Ingreso compra').length,
+      movimientos:saltFiltered.length
+    };
+  },[saltMoves,saltFiltered]);
+  const saltByFrigorifico=useMemo(()=>{
+    const map={};
+    saltFiltered.filter(m=>m.tipo==='Salida frigorifico').forEach(m=>{
+      const key=m.frigorifico||'Sin frigorifico';
+      map[key]=(map[key]||0)+Number(m.kg||0);
+    });
+    return Object.entries(map).map(([nombre,kg])=>({nombre,kg:round2(kg),bolsas:round2(kg/SAL_BAG_KG),pallets:round2(kg/(SAL_BAG_KG*SAL_PALLET_BAGS))})).sort((a,b)=>b.kg-a.kg);
+  },[saltFiltered]);
+  const saltBySector=useMemo(()=>{
+    const map={};
+    saltFiltered.filter(m=>m.tipo==='Consumo planta').forEach(m=>{
+      const key=m.sector||'Sin sector';
+      map[key]=(map[key]||0)+Number(m.kg||0);
+    });
+    return Object.entries(map).map(([nombre,kg])=>({nombre,kg:round2(kg),bolsas:round2(kg/SAL_BAG_KG),pallets:round2(kg/(SAL_BAG_KG*SAL_PALLET_BAGS))})).sort((a,b)=>b.kg-a.kg);
+  },[saltFiltered]);
+  const saltConsumptionTrend=useMemo(()=>{
+    const byDate={};
+    saltFiltered.filter(m=>m.tipo==='Consumo planta').forEach(m=>{
+      byDate[m.fecha]=(byDate[m.fecha]||0)+Number(m.kg||0);
+    });
+    const dates=Object.keys(byDate).sort(compareDateAsc);
+    const totalKg=round2(dates.reduce((a,d)=>a+Number(byDate[d]||0),0));
+    return {
+      labels:dates.map(fmtDate),
+      kg:dates.map(d=>round2(byDate[d])),
+      avgKg:dates.length?round2(totalKg/dates.length):0,
+      avgBolsas:dates.length?round2((totalKg/dates.length)/SAL_BAG_KG):0
+    };
+  },[saltFiltered]);
+
+  const historyRows=useMemo(()=>{
+    const rows=[];
+    records.forEach(r=>{
+      rows.push({tipo:'Presentismo',fecha:r.fecha,semana:String(r.semana),legajo:r.legajo,nombre:r.nombre,sector:r.sector,estado:r.estadoDia,detalle:`E: ${r.entrada||'—'} | S: ${r.salida||'—'} | Ingreso: ${entryStatus(r)} | Salida: ${exitStatus(r)} | Obs: ${r.observaciones||'—'}`});
+      rows.push({tipo:'Producción',fecha:r.fecha,semana:String(r.semana),legajo:r.legajo,nombre:r.nombre,sector:r.sector,estado:r.calidad,detalle:`Producción: ${r.produccionReal} | Meta: ${r.metaDiaria} | Cumpl.: ${r.cumplimiento}% | Semáforo: ${r.semaforo}`});
+    });
+    movements.forEach(m=>rows.push({tipo:'Movimientos',fecha:m.fecha,semana:'',legajo:m.legajo,nombre:m.nombre,sector:'',estado:m.cambio,detalle:`${m.valorAnterior} → ${m.valorNuevo} | ${m.observacion||'—'}`}));
+    saltMoves.forEach(m=>rows.push({tipo:'Sal',fecha:m.fecha,semana:String(getWeekNum(m.fecha)||''),legajo:'',nombre:m.frigorifico||m.sector||'Sal',sector:m.sector||m.frigorifico||'',estado:m.tipo,detalle:`${m.kg} kg | ${m.bolsas} bolsas | ${m.pallets} pallets${m.observaciones?` | ${m.observaciones}`:''}`}));
+    return rows.sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre)));
+  },[records,movements,saltMoves]);
+  const historyFiltered=useMemo(()=>historyRows.filter(r=>{
+    if(histFilters.tipo!=='Todos'&&r.tipo!==histFilters.tipo)return false;
+    if(!dateInRange(r.fecha,histFilters.fechaDesde,histFilters.fechaHasta))return false;
+    if(histFilters.semana!=='Todas'&&r.semana!==String(histFilters.semana))return false;
+    if(histFilters.estado!=='Todos'&&r.estado!==histFilters.estado)return false;
+    if(histFilters.sector!=='Todos'&&r.sector!==histFilters.sector)return false;
+    const q=histFilters.texto.trim().toLowerCase();
+    if(q&&!([r.fecha,r.legajo,r.nombre,r.sector,r.estado,r.detalle,r.tipo].join(' ').toLowerCase().includes(q)))return false;
+    return true;
+  }),[historyRows,histFilters]);
+
+  function recordMovement(entry){setMovements(p=>[{id:makeId('mov'),...entry},...p]);}
+  function saveEmployee(){
+    const legajo=(empForm.legajo||'').trim()||`AUTO-${Math.random().toString(36).slice(2,6)}`;
+    const nombre=(empForm.nombre||'').trim()||`Empleado ${legajo}`;
+    const sector=(empForm.sector||'').trim()||'Sin sector';
+    const supervisor=(empForm.supervisor||'').trim();
+    const metaDiaria=Number(empForm.metaDiaria||0);
+    if(employees.some(e=>e.legajo===legajo&&e.id!==empForm.id)){alert('Ya existe un empleado con ese legajo.');return;}
+    if(!empForm.id){
+      const next={id:makeId('emp'),legajo,nombre,sector,turno:empForm.turno,tipoEmpleado:empForm.tipoEmpleado,supervisor,metaDiaria,activo:true};
+      setEmployees(p=>[next,...p]);
+      recordMovement({fecha:todayValue(),legajo,nombre,cambio:'Alta',valorAnterior:'-',valorNuevo:`${next.tipoEmpleado} | ${next.sector} | ${next.turno}`,autoriza:supervisor||'Sistema',activo:'Sí',observacion:'Alta de empleado'});
+      setEmpForm(emptyEmp);return;
+    }
+    const prev=employees.find(e=>e.id===empForm.id);if(!prev)return;
+    const upd={...prev,legajo,nombre,sector,turno:empForm.turno,tipoEmpleado:empForm.tipoEmpleado,supervisor,metaDiaria,activo:empForm.activo};
+    setEmployees(p=>p.map(e=>e.id===upd.id?upd:e));
+    if(prev.tipoEmpleado!==upd.tipoEmpleado||prev.sector!==upd.sector||prev.turno!==upd.turno||prev.metaDiaria!==upd.metaDiaria){recordMovement({fecha:todayValue(),legajo:upd.legajo,nombre:upd.nombre,cambio:'Actualización',valorAnterior:`${prev.tipoEmpleado} | ${prev.sector} | ${prev.turno} | Meta ${prev.metaDiaria}`,valorNuevo:`${upd.tipoEmpleado} | ${upd.sector} | ${upd.turno} | Meta ${upd.metaDiaria}`,autoriza:upd.supervisor||'Sistema',activo:upd.activo?'Sí':'No',observacion:'Edición manual'});}
+    setEmpForm(emptyEmp);
+  }
+  function sendToBaja(id){
+    const emp=employees.find(e=>e.id===id);if(!emp)return;if(!confirm(`¿Dar de baja a ${emp.nombre}?`))return;
+    setEmployees(p=>p.map(e=>e.id===id?{...e,activo:false}:e));
+    recordMovement({fecha:todayValue(),legajo:emp.legajo,nombre:emp.nombre,cambio:'Baja',valorAnterior:'Activo',valorNuevo:'Dado de baja',autoriza:'Sistema',activo:'No',observacion:'Baja lógica'});
+    if(fichaLeg===emp.legajo){const next=activeEmployees.find(e=>e.id!==id);if(next)setFichaLeg(next.legajo);}
+  }
+  function reactivateEmployee(id){
+    const emp=employees.find(e=>e.id===id);if(!emp)return;
+    setEmployees(p=>p.map(e=>e.id===id?{...e,activo:true}:e));
+    recordMovement({fecha:todayValue(),legajo:emp.legajo,nombre:emp.nombre,cambio:'Reactivación',valorAnterior:'Dado de baja',valorNuevo:'Activo',autoriza:'Sistema',activo:'Sí',observacion:'Reactivado sin perder historial'});
+  }
+  function addAttendance(){
+    const emp=activeEmployees.find(e=>e.legajo===presentForm.legajo);if(!emp){alert('Primero cargá personal activo.');return;}
+    setRecords(prev=>upsertAttendance(prev,emp,{...presentForm,fecha:normalizeDateInput(presentForm.fecha,todayValue())}).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre))));
+    setPresentListFilters({fecha:normalizeDateInput(presentForm.fecha,todayValue()),legajo:'Todos'});
+    setPresentForm(p=>({...p,entrada:'',salida:'',observaciones:''}));
+  }
+  function importAttendance(rows){
+    let next=[...records];
+    rows.forEach(row=>{const emp=employees.find(e=>String(e.legajo)===String(row.legajo));if(emp)next=upsertAttendance(next,emp,row);});
+    next.sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre)));
+    setRecords(next);if(rows[0]?.fecha)setPresentListFilters({fecha:rows[0].fecha,legajo:'Todos'});
+  }
+  function addProduction(){
+    const emp=activeEmployees.find(e=>e.legajo===dailyForm.legajo);if(!emp){alert('Primero cargá personal activo.');return;}
+    setRecords(prev=>upsertProduction(prev,emp,{...dailyForm,fecha:normalizeDateInput(dailyForm.fecha,todayValue())}).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre))));
+    setDailyListFilters({fecha:normalizeDateInput(dailyForm.fecha,todayValue()),legajo:'Todos'});
+    setDailyForm(p=>({...p,produccionReal:'',observaciones:''}));
+  }
+  function importProduction(rows){
+    let next=[...records];
+    rows.forEach(row=>{const emp=employees.find(e=>String(e.legajo)===String(row.legajo));if(emp)next=upsertProduction(next,emp,row);});
+    next.sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre)));
+    setRecords(next);if(rows[0]?.fecha)setDailyListFilters({fecha:rows[0].fecha,legajo:'Todos'});
+  }
+  function deleteRecord(id){if(!confirm('¿Eliminar este registro?'))return;setRecords(p=>p.filter(r=>r.id!==id));}
+  function importEmployees(list){
+    const seen=new Set(employees.map(e=>e.legajo));const toAdd=[];
+    list.forEach(item=>{if(seen.has(item.legajo))return;seen.add(item.legajo);toAdd.push({...item,id:makeId('emp')});});
+    if(!toAdd.length){alert('No hubo empleados nuevos para agregar.');return;}
+    setEmployees(p=>[...toAdd,...p]);
+    setMovements(p=>[...toAdd.map(ne=>({id:makeId('mov'),fecha:todayValue(),legajo:ne.legajo,nombre:ne.nombre,cambio:'Alta (archivo)',valorAnterior:'-',valorNuevo:`${ne.tipoEmpleado} | ${ne.sector} | ${ne.turno}`,autoriza:'Sistema',activo:'Sí',observacion:'Importado'})),...p]);
+  }
+
+  function importFullWorkbookFile(file){
+    if(!file)return;
+    if(!confirm('Esto va a reemplazar la información actual con la del Excel completo. ¿Continuar?')){if(fullReportInputRef.current)fullReportInputRef.current.value='';return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const activeRows=sheetObjectsByAliases(wb,['Empleados activos','Empleados activo']);
+        const inactiveRows=sheetObjectsByAliases(wb,['Empleados baja','Empleados dados de baja','Empleados bajas']);
+        const movementRows=sheetObjectsByAliases(wb,['Movimientos personal','Movimiento personal']);
+        const baseRows=sheetObjectsByAliases(wb,['Base general']);
+        const saltRows=sheetObjectsByAliases(wb,['Sal movimientos','Movimientos de sal']);
+        const plantRows=sheetObjectsByAliases(wb,['Plantas sal','Plantas de sal']);
+
+        let importedEmployees=[
+          ...activeRows.map(r=>parseWorkbookEmployeeRow(r,true)).filter(Boolean),
+          ...inactiveRows.map(r=>parseWorkbookEmployeeRow(r,false)).filter(Boolean)
+        ];
+        const empByLegajo=new Map();
+        importedEmployees.forEach(emp=>{if(!empByLegajo.has(String(emp.legajo)))empByLegajo.set(String(emp.legajo),emp); else if(emp.activo)empByLegajo.set(String(emp.legajo),emp);});
+        importedEmployees=sortByName(Array.from(empByLegajo.values()));
+
+        const importedMovements=movementRows.map(parseWorkbookMovementRow).filter(Boolean).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre||'').localeCompare(String(b.nombre||'')));
+        const importedRecords=baseRows.map(r=>parseWorkbookRecordRow(r,importedEmployees)).filter(Boolean).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre||'').localeCompare(String(b.nombre||'')));
+        const importedSalt=saltRows.map(parseWorkbookSaltRow).filter(Boolean).sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.tipo||'').localeCompare(String(b.tipo||'')));
+        const importedPlantsRaw=plantRows.map(parseWorkbookPlantRow).filter(Boolean);
+        const importedPlants=(importedPlantsRaw.length?importedPlantsRaw:defaultSaltPlants()).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||'')));
+
+        if(!importedEmployees.length && !importedRecords.length && !importedSalt.length){
+          alert('No se encontraron hojas válidas para importar en el Excel completo.');
+          if(fullReportInputRef.current)fullReportInputRef.current.value='';
+          return;
+        }
+
+        setEmployees(importedEmployees);
+        setMovements(importedMovements);
+        setRecords(importedRecords);
+        setSaltMoves(importedSalt);
+        setSaltPlants(importedPlants);
+
+        const activeImported=sortByName(importedEmployees.filter(e=>e.activo));
+        const firstLegajo=activeImported[0]?.legajo||'';
+        const latestDate=unique([...importedRecords.map(r=>r.fecha),...importedSalt.map(m=>m.fecha)]).sort(compareDateAsc).slice(-1)[0]||todayValue();
+        const allDates=unique([...importedRecords.map(r=>r.fecha),...importedSalt.map(m=>m.fecha)]).sort(compareDateAsc);
+        const hasta=allDates[allDates.length-1]||'';
+        const desde=allDates[Math.max(0,allDates.length-7)]||hasta;
+
+        setPresentForm({fecha:latestDate,legajo:firstLegajo,estadoDia:'Presente',entrada:'',salida:'',observaciones:''});
+        setDailyForm({fecha:latestDate,legajo:firstLegajo,produccionReal:'',calidad:(activeImported[0]?.tipoEmpleado==='Operario'?'Sin errores':'No aplica'),observaciones:''});
+        setPresentListFilters({fecha:latestDate,legajo:'Todos'});
+        setDailyListFilters({fecha:latestDate,legajo:'Todos'});
+        setDashboardRange({desde,hasta});
+        setFilters({fecha:latestDate,sector:'Todos',turno:'Todos',supervisor:'Todos'});
+        setWeekFilter('Todas');
+        setSaltFilters({fechaDesde:'',fechaHasta:'',tipo:'Todos',texto:'',planta:'Todas'});
+        setSaltForm({id:'',fecha:latestDate,tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS),frigorifico:'',sector:'',observaciones:''});
+        setFichaLeg(firstLegajo);
+        setCompareLegs([]);
+        setCompareSelect(activeImported.find(e=>e.legajo!==firstLegajo)?.legajo||'');
+        setTab('DASHBOARD_HOY');
+
+        alert(`Informe completo importado.\nEmpleados: ${importedEmployees.length}\nRegistros: ${importedRecords.length}\nMovimientos de sal: ${importedSalt.length}`);
+      }catch(err){
+        console.error(err);
+        alert('No se pudo leer el Excel completo.');
+      }finally{
+        if(fullReportInputRef.current)fullReportInputRef.current.value='';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function clearAll(){if(!confirm('Esto vacía personal, historial, sal y registros. ¿Continuar?'))return;localStorage.removeItem(SK.e);localStorage.removeItem(SK.m);localStorage.removeItem(SK.r);localStorage.removeItem(SK.s);localStorage.removeItem(SK.sp);setEmployees([]);setMovements([]);setRecords([]);setSaltMoves([]);setSaltPlants(defaultSaltPlants());setNewSaltPlant('');setEmpForm(emptyEmp);setPresentForm({fecha:todayValue(),legajo:'',estadoDia:'Presente',entrada:'',salida:'',observaciones:''});setDailyForm({fecha:todayValue(),legajo:'',produccionReal:'',calidad:'Sin errores',observaciones:''});setSaltForm({id:'',fecha:todayValue(),tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS),frigorifico:'',sector:'',observaciones:''});setSaltFilters({fechaDesde:'',fechaHasta:'',tipo:'Todos',texto:'',planta:'Todas'});setFichaLeg('');setCompareLegs([]);setCompareSelect('');}
+  function addComparator(){if(!compareSelect||compareSelect===fichaLeg||compareLegs.includes(compareSelect))return;setCompareLegs(p=>[...p,compareSelect].slice(0,3));}
+  function saveSaltMovement(){
+    if((Number(String(saltForm.cantidad||0).replace(',','.'))||0)<=0){alert('Ingresá una cantidad válida de sal.');return;}
+    if(saltForm.tipo==='Salida frigorifico'&&!String(saltForm.frigorifico||'').trim()){alert('Seleccioná una planta para la salida.');return;}
+    const move=buildSaltMove(saltForm);
+    setSaltMoves(prev=>{
+      const exists=prev.some(m=>m.id===move.id);
+      const next=exists?prev.map(m=>m.id===move.id?move:m):[move,...prev];
+      return next.sort((a,b)=>compareDateDesc(a.fecha,b.fecha));
+    });
+    setSaltForm({id:'',fecha:todayValue(),tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS),frigorifico:'',sector:'',observaciones:''});
+  }
+  function editSaltMovement(move){
+    setSaltForm({id:move.id||'',fecha:fmtDate(move.fecha),tipo:move.tipo||'Ingreso compra',base:move.base||'kg',cantidad:String(move.cantidad??''),frigorifico:move.frigorifico||'',sector:move.sector||'',observaciones:move.observaciones||''});
+    setTimeout(()=>{const el=document.getElementById('salt-form-card'); if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},60);
+  }
+  function cancelSaltEdit(){setSaltForm({id:'',fecha:todayValue(),tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS),frigorifico:'',sector:'',observaciones:''});}
+  function deleteSaltMovement(id){if(!confirm('¿Eliminar este movimiento de sal?'))return;setSaltMoves(p=>p.filter(m=>m.id!==id)); if(saltForm.id===id)cancelSaltEdit();}
+  function addSaltPlant(){
+    const nombre=(newSaltPlant||'').trim();
+    if(!nombre){alert('Escribí el nombre de la planta.');return;}
+    const exists=(saltPlants||[]).find(p=>normKey(p.nombre)===normKey(nombre));
+    if(exists){
+      if(exists.activa){alert('Esa planta ya está activa.');return;}
+      setSaltPlants(prev=>prev.map(p=>p.id===exists.id?{...p,nombre,activa:true}:p));
+      setNewSaltPlant('');
+      return;
+    }
+    setSaltPlants(prev=>[...prev,{id:makeId('planta'),nombre,activa:true}]);
+    setNewSaltPlant('');
+  }
+  function setSaltPlantStatus(id,activa){
+    setSaltPlants(prev=>prev.map(p=>p.id===id?{...p,activa}:p));
+    const plant=saltPlants.find(p=>p.id===id);
+    if(!activa&&plant&&saltForm.frigorifico===plant.nombre)setSaltForm(f=>({...f,frigorifico:''}));
+    if(!activa&&plant&&saltFilters.planta===plant.nombre)setSaltFilters(f=>({...f,planta:'Todas'}));
+  }
+  const selectedPresentEmployee=activeEmployees.find(e=>e.legajo===presentForm.legajo)||null;
+  const selectedDailyEmployee=activeEmployees.find(e=>e.legajo===dailyForm.legajo)||null;
+  const presentPreview=selectedPresentEmployee?computeRecord({employee:selectedPresentEmployee,fecha:presentForm.fecha,estadoDia:presentForm.estadoDia,entrada:presentForm.entrada,salida:presentForm.salida,produccionReal:records.find(r=>r.fecha===presentForm.fecha&&r.legajo===presentForm.legajo)?.produccionReal||0,calidad:records.find(r=>r.fecha===presentForm.fecha&&r.legajo===presentForm.legajo)?.calidad||(selectedPresentEmployee.tipoEmpleado==='Operario'?'Sin errores':'No aplica'),observaciones:presentForm.observaciones}):null;
+  const dailyPreview=selectedDailyEmployee?computeRecord({employee:selectedDailyEmployee,fecha:dailyForm.fecha,estadoDia:records.find(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?.estadoDia||'Presente',entrada:records.find(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?.entrada||'',salida:records.find(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?.salida||'',produccionReal:Number(dailyForm.produccionReal||0),calidad:dailyForm.calidad,observaciones:dailyForm.observaciones}):null;
+
+  const TABS=[
+    {id:'DASHBOARD_HOY',icon:'📊',label:'Dashboard'},
+    {id:'PRESENTISMO',icon:'🟢',label:'Presentismo'},
+    {id:'CARGA_DIARIA',icon:'📝',label:'Carga diaria'},
+    {id:'SAL',icon:'🧂',label:'Sal'},
+    {id:'BASE_GENERAL',icon:'🗃️',label:'Base general'},
+    {id:'SEGUIMIENTO',icon:'📈',label:'Seguimiento'},
+    {id:'FICHA_OPERARIO',icon:'👤',label:'Ficha'},
+    {id:'HISTORIAL',icon:'🕘',label:'Historial'},
+    {id:'ADMIN_PERSONAL',icon:'⚙️',label:'Personal'}
+  ];
+
+  function exportFullWorkbook(){
+    if(typeof XLSX==='undefined'){alert('No se pudo generar el archivo completo.');return;}
+    const wb=XLSX.utils.book_new();
+    const now=new Date();
+    const allDates=unique([...records.map(r=>r.fecha),...saltMoves.map(m=>m.fecha)]).sort(compareDateAsc);
+    const orderedRecords=[...records].sort((a,b)=>compareDateAsc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre)));
+    const orderedSalt=[...saltMoves].sort((a,b)=>compareDateAsc(a.fecha,b.fecha)||String(a.tipo).localeCompare(String(b.tipo)));
+    const orderedMovements=[...movements].sort((a,b)=>compareDateAsc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre)));
+    const orderedPlants=[...(saltPlants||[])].sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||'')));
+    const totalStockKg=round2(saltMoves.reduce((a,m)=>a+signedSalt(m,'kg'),0));
+
+    appendJsonSheet(wb,'Resumen general',[
+      {Seccion:'Generado',Detalle:now.toLocaleString('es-AR')},
+      {Seccion:'Rango con datos',Detalle:allDates.length?`${fmtDate(allDates[0])} a ${fmtDate(allDates[allDates.length-1])}`:'Sin fechas'},
+      {Seccion:'Empleados activos',Detalle:activeEmployees.length},
+      {Seccion:'Empleados dados de baja',Detalle:inactiveEmployees.length},
+      {Seccion:'Registros base general',Detalle:records.length},
+      {Seccion:'Movimientos de personal',Detalle:movements.length},
+      {Seccion:'Movimientos de sal',Detalle:saltMoves.length},
+      {Seccion:'Stock actual de sal (kg)',Detalle:totalStockKg},
+      {Seccion:'Stock actual de sal (bolsas)',Detalle:round2(totalStockKg/SAL_BAG_KG)},
+      {Seccion:'Stock actual de sal (pallets)',Detalle:round2(totalStockKg/(SAL_BAG_KG*SAL_PALLET_BAGS))}
+    ]);
+
+    appendJsonSheet(wb,'Resumen por fecha',allDates.map(fecha=>{
+      const dayRecords=records.filter(r=>r.fecha===fecha);
+      const daySalt=saltMoves.filter(m=>m.fecha===fecha);
+      const presentes=dayRecords.filter(r=>['Presente','Tarde','Media jornada'].includes(r.estadoDia)).length;
+      const ausentes=dayRecords.filter(r=>r.estadoDia==='Ausente').length;
+      const produccion=round2(dayRecords.reduce((a,r)=>a+Number(r.produccionReal||0),0));
+      const consumo=round2(daySalt.filter(m=>m.tipo==='Consumo planta').reduce((a,m)=>a+Number(m.kg||0),0));
+      const salida=round2(daySalt.filter(m=>m.tipo==='Salida frigorifico').reduce((a,m)=>a+Number(m.kg||0),0));
+      const ingreso=round2(daySalt.filter(m=>m.tipo==='Ingreso compra'||m.tipo==='Ajuste +').reduce((a,m)=>a+Number(m.kg||0),0));
+      const plantasDia=unique(daySalt.map(m=>m.frigorifico).filter(Boolean)).join(', ');
+      return {
+        Fecha:fmtDate(fecha),
+        Semana:getWeekNum(fecha),
+        'Empleados con registro':dayRecords.length,
+        Presentes:presentes,
+        Ausentes:ausentes,
+        'Producción total':produccion,
+        'Sal consumida planta (kg)':consumo,
+        'Sal salida frigoríficos (kg)':salida,
+        'Sal ingresada (kg)':ingreso,
+        Plantas:plantasDia||'—'
+      };
+    }));
+
+    appendJsonSheet(wb,'Empleados activos',activeEmployees.map(e=>({
+      Legajo:e.legajo,
+      Nombre:e.nombre,
+      Sector:e.sector,
+      Turno:e.turno,
+      Tipo:e.tipoEmpleado,
+      Supervisor:e.supervisor||'Sin supervisor',
+      'Meta diaria':e.metaDiaria,
+      Estado:'Activo'
+    })));
+    appendJsonSheet(wb,'Empleados baja',inactiveEmployees.map(e=>({
+      Legajo:e.legajo,
+      Nombre:e.nombre,
+      Sector:e.sector,
+      Turno:e.turno,
+      Tipo:e.tipoEmpleado,
+      Supervisor:e.supervisor||'Sin supervisor',
+      'Meta diaria':e.metaDiaria,
+      Estado:'Baja'
+    })));
+    appendJsonSheet(wb,'Movimientos personal',orderedMovements.map(m=>({
+      Fecha:fmtDate(m.fecha),
+      Legajo:m.legajo,
+      Nombre:m.nombre,
+      Cambio:m.cambio,
+      Antes:m.valorAnterior,
+      Despues:m.valorNuevo,
+      Autoriza:m.autoriza,
+      Activo:m.activo,
+      Observacion:m.observacion
+    })));
+    appendJsonSheet(wb,'Plantas sal',orderedPlants.map(p=>({
+      Planta:p.nombre,
+      Estado:p.activa?'Activa':'Inactiva'
+    })));
+    appendJsonSheet(wb,'Base general',orderedRecords.map(r=>({
+      Fecha:fmtDate(r.fecha),
+      Semana:r.semana,
+      Legajo:r.legajo,
+      Nombre:r.nombre,
+      Sector:r.sector,
+      Turno:r.turno,
+      Tipo:r.tipoEmpleado,
+      Estado:r.estadoDia,
+      Entrada:r.entrada||'—',
+      Salida:r.salida||'—',
+      Horas:r.horas,
+      Produccion:r.produccionReal,
+      Meta:r.metaDiaria,
+      'Cumplimiento %':`${r.cumplimiento}%`,
+      Calidad:r.calidad,
+      Puntaje:r.puntajeFinal??'—',
+      Semaforo:r.semaforo,
+      Observaciones:r.observaciones||''
+    })));
+    appendJsonSheet(wb,'Sal movimientos',orderedSalt.map(m=>({
+      Fecha:fmtDate(m.fecha),
+      Tipo:m.tipo,
+      Base:m.base,
+      Cantidad:m.cantidad,
+      Kg:m.kg,
+      Bolsas:m.bolsas,
+      Pallets:m.pallets,
+      Signo:m.signo>0?'+':'-',
+      Planta:m.frigorifico||'—',
+      Sector:m.sector||'—',
+      Observaciones:m.observaciones||''
+    })));
+
+    allDates.forEach(fecha=>{
+      const dayRecords=orderedRecords.filter(r=>r.fecha===fecha);
+      const daySalt=orderedSalt.filter(m=>m.fecha===fecha);
+      const presentes=dayRecords.filter(r=>['Presente','Tarde','Media jornada'].includes(r.estadoDia)).length;
+      const ausentes=dayRecords.filter(r=>r.estadoDia==='Ausente').length;
+      const produccion=round2(dayRecords.reduce((a,r)=>a+Number(r.produccionReal||0),0));
+      const consumo=round2(daySalt.filter(m=>m.tipo==='Consumo planta').reduce((a,m)=>a+Number(m.kg||0),0));
+      const salida=round2(daySalt.filter(m=>m.tipo==='Salida frigorifico').reduce((a,m)=>a+Number(m.kg||0),0));
+      const ingreso=round2(daySalt.filter(m=>m.tipo==='Ingreso compra'||m.tipo==='Ajuste +').reduce((a,m)=>a+Number(m.kg||0),0));
+      const aoa=[
+        ['Reporte integral del día',fmtDate(fecha)],
+        [],
+        ['Resumen'],
+        ['Empleados con registro',dayRecords.length],
+        ['Presentes',presentes],
+        ['Ausentes',ausentes],
+        ['Producción total',produccion],
+        ['Sal consumida planta (kg)',consumo],
+        ['Sal salida frigoríficos (kg)',salida],
+        ['Sal ingresada (kg)',ingreso],
+        []
+      ];
+      aoa.push(['Empleados y producción']);
+      aoa.push(['Legajo','Nombre','Sector','Turno','Tipo','Estado','Entrada','Salida','Horas','Producción','Meta','Cumpl. %','Calidad','Semáforo','Observaciones']);
+      if(dayRecords.length){
+        dayRecords.forEach(r=>aoa.push([r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.entrada||'—',r.salida||'—',r.horas,r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.semaforo,r.observaciones||'']));
+      } else {
+        aoa.push(['Sin registros de empleados']);
+      }
+      aoa.push([]);
+      aoa.push(['Sal del día']);
+      aoa.push(['Tipo','Base','Cantidad','Kg','Bolsas','Pallets','Planta','Sector','Observaciones']);
+      if(daySalt.length){
+        daySalt.forEach(m=>aoa.push([m.tipo,m.base,m.cantidad,m.kg,m.bolsas,m.pallets,m.frigorifico||'—',m.sector||'—',m.observaciones||'']));
+      } else {
+        aoa.push(['Sin movimientos de sal']);
+      }
+      appendAoaSheet(wb,`Día ${fmtDate(fecha).replace(/\//g,'-')}`,aoa);
+    });
+
+    XLSX.writeFile(wb,`reporte_completo_planta_${formatDateISO(now)}.xlsx`);
+  }
+
+
+  return <div style={{fontFamily:'system-ui,sans-serif',minHeight:'100vh',background:C.s100}}>
+    {showEmpImport&&<ImportEmpModal onClose={()=>setShowEmpImport(false)} onImport={importEmployees} existingEmployees={employees}/>}
+    {showAttendanceImport&&<ImportAttendanceModal onClose={()=>setShowAttendanceImport(false)} onImport={rows=>{importAttendance(rows);setShowAttendanceImport(false);}} employees={activeEmployees}/>}
+    {showDailyImport&&<ImportDailyModal onClose={()=>setShowDailyImport(false)} onImport={rows=>{importProduction(rows);setShowDailyImport(false);}} employees={activeEmployees}/>}
+
+    <div style={{background:`linear-gradient(135deg,${C.s900} 0%,${C.indigoD} 100%)`,boxShadow:'0 4px 20px rgba(0,0,0,.25)'}}>
+      <div style={{padding:isMobile?'12px 12px 0':'14px 20px 0',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'10px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+          <div style={{width:'42px',height:'42px',borderRadius:'11px',background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',boxShadow:'0 3px 12px rgba(99,102,241,.5)'}}>🏭</div>
+          <div><div style={{fontSize:'17px',fontWeight:800,color:C.white,letterSpacing:'-0.02em'}}>Control de planta y performance</div><div style={{fontSize:'11px',color:'rgba(255,255,255,.45)',marginTop:'1px'}}>Presentismo separado · Producción · Historial · Personal activo/baja</div></div>
+        </div>
+        <div style={{flex:isMobile?'1 1 100%':'1',maxWidth:isMobile?'100%':'320px',minWidth:isMobile?'100%':'200px',position:'relative'}}>
+          <span style={{position:'absolute',left:'10px',top:'50%',transform:'translateY(-50%)',color:'rgba(255,255,255,.5)',fontSize:'14px'}}>🔍</span>
+          <input value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)} placeholder='Buscar empleado, fecha, sector...' style={{width:'100%',padding:'8px 11px 8px 32px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.1)',color:C.white,fontSize:'13px',boxSizing:'border-box'}}/>
+          {globalSearch&&<button onClick={()=>setGlobalSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,.6)',cursor:'pointer',fontSize:'14px'}}>×</button>}
+        </div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
+          <input ref={fullReportInputRef} type='file' accept='.xlsx,.xls' style={{display:'none'}} onChange={e=>importFullWorkbookFile(e.target.files?.[0])}/>
+          <BtnP onClick={()=>setShowEmpImport(true)}>📥 Empleados</BtnP>
+          <button onClick={()=>fullReportInputRef.current?.click()} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.32)',background:'rgba(255,255,255,.18)',color:C.white,fontSize:'13px',fontWeight:700,cursor:'pointer'}}>📘 Leer Excel completo</button>
+          <button onClick={exportFullWorkbook} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.32)',background:'rgba(255,255,255,.08)',color:C.white,fontSize:'13px',fontWeight:700,cursor:'pointer'}}>⬇️ Informe completo</button>
+          <button onClick={()=>exportCsv('base_general.csv',['Fecha','Semana','Legajo','Nombre','Sector','Turno','Tipo','Estado','Entrada','Salida','Horas','Producción','Meta','% Cumpl.','Calidad','Puntaje','Semáforo','Observaciones'],records.map(r=>[fmtDate(r.fecha),r.semana,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.entrada,r.salida,r.horas,r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.puntajeFinal,r.semaforo,r.observaciones]))} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.25)',background:'transparent',color:'rgba(255,255,255,.85)',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>⬇️ CSV</button>
+          <button onClick={clearAll} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(244,63,94,.4)',background:'transparent',color:'rgba(244,63,94,.85)',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>Vaciar</button>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:'2px',padding:isMobile?'10px 12px 0':'10px 20px 0',overflowX:'auto'}}>{TABS.map(t=><button key={t.id} className='tab-btn' onClick={()=>setTab(t.id)} style={{padding:'9px 16px',fontSize:'13px',fontWeight:tab===t.id?700:500,color:tab===t.id?C.white:'rgba(255,255,255,.5)',background:tab===t.id?'rgba(255,255,255,.15)':'transparent',border:'none',borderRadius:'9px 9px 0 0',cursor:'pointer',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:'6px',borderBottom:tab===t.id?'3px solid #818cf8':'3px solid transparent'}}><span style={{fontSize:'14px'}}>{t.icon}</span>{t.label}</button>)}</div>
+    </div>
+
+    {globalSearch&&<div style={{background:C.white,border:`1px solid ${C.indigoL}`,borderRadius:'0 0 16px 16px',margin:isMobile?'0 12px':'0 20px',boxShadow:'0 8px 24px rgba(99,102,241,.15)',padding:'16px',position:'relative',zIndex:10}}>
+      <div style={{fontSize:'12px',fontWeight:700,color:C.indigoD,marginBottom:'10px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Resultados rápidos — {searchedRecords.length}</div>
+      <DataTable headers={['Fecha','Legajo','Nombre','Sector','Estado','Producción','Semáforo']} rows={searchedRecords.slice(0,20).map(r=>[fmtDate(r.fecha),r.legajo,r.nombre,r.sector,<StatusBadge key={r.id+'s'} value={r.estadoDia}/>,r.produccionReal,<Badge key={r.id+'b'} value={r.semaforo}/>])} searchQ={globalSearch}/>
+    </div>}
+
+    <div style={{padding:isMobile?'12px':'24px',maxWidth:'1500px',margin:'0 auto'}}>
+      {tab==='DASHBOARD_HOY'&&<div>
+        <SecH title='Dashboard' subtitle='Elegí un rango de fechas para ver promedios, gráficos ampliados y el detalle separado por día.' right={<>
+          <DateInp value={dashboardRange.desde} onChange={e=>setDashboardRange(p=>({...p,desde:e.target.value}))} style={{width:'160px'}}/>
+          <DateInp value={dashboardRange.hasta} onChange={e=>setDashboardRange(p=>({...p,hasta:e.target.value}))} style={{width:'160px'}}/>
+          <BtnN onClick={()=>{if(dashboardDateOptions.length){const hasta=dashboardDateOptions[dashboardDateOptions.length-1];const desde=dashboardDateOptions[Math.max(0,dashboardDateOptions.length-7)]||hasta;setDashboardRange({desde,hasta});}}}>Últimos 7 días</BtnN>
+          <BtnN onClick={()=>{if(dashboardDateOptions.length)setDashboardRange({desde:dashboardDateOptions[0],hasta:dashboardDateOptions[dashboardDateOptions.length-1]});}}>Todo</BtnN>
+          <Sel value={filters.sector} onChange={e=>setFilters(p=>({...p,sector:e.target.value}))} style={{width:'150px'}}><option value='Todos'>Todos sectores</option>{sectors.map(s=><option key={s} value={s}>{s}</option>)}</Sel>
+          <Sel value={filters.turno} onChange={e=>setFilters(p=>({...p,turno:e.target.value}))} style={{width:'140px'}}><option value='Todos'>Todos turnos</option>{turnos_.map(t=><option key={t} value={t}>{t}</option>)}</Sel>
+          <Sel value={filters.supervisor} onChange={e=>setFilters(p=>({...p,supervisor:e.target.value}))} style={{width:'170px'}}><option value='Todos'>Todos supervisores</option>{supervisors.map(s=><option key={s} value={s}>{s}</option>)}</Sel>
+        </>} />
+        {!employees.length?<Card style={{textAlign:'center',padding:'40px'}}><div style={{fontSize:'56px',marginBottom:'12px'}}>🏁</div><div style={{fontSize:'20px',fontWeight:800,color:C.s800,marginBottom:'8px'}}>Sin empleados cargados</div><div style={{color:C.s500,marginBottom:'16px'}}>Primero cargá personal desde la solapa <b>Personal</b> o importá tu archivo.</div><div style={{display:'flex',justifyContent:'center',gap:'8px',flexWrap:'wrap'}}><BtnP onClick={()=>setTab('ADMIN_PERSONAL')}>Ir a Personal</BtnP><BtnN onClick={()=>setShowEmpImport(true)}>Importar empleados</BtnN></div></Card>:<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'10px',marginBottom:'18px'}}>
+          <KPI label='Registros filtrados' value={dashboardKpis.total} icon='📦' bg={C.indigoL} color={C.indigoD}/>
+          <KPI label='Presentes' value={dashboardKpis.presentes} icon='✅' bg={C.emeraldL} color={C.emeraldD}/>
+          <KPI label='Ausentes' value={dashboardKpis.ausentes} icon='❌' bg={C.roseL} color={C.roseD}/>
+          <KPI label='Operativos' value={dashboardKpis.operativos} icon='⚙️' bg={C.skyL} color={C.skyD}/>
+          <KPI label='Rend. prom.' value={dashboardKpis.rend} icon='📈'/>
+          <KPI label='Verde' value={dashboardKpis.verdes} bg={C.emeraldL} color={C.emeraldD}/>
+          <KPI label='Amarillo' value={dashboardKpis.amarillos} bg={C.amberL} color={C.amberD}/>
+          <KPI label='Rojo' value={dashboardKpis.rojos} bg={C.roseL} color={C.roseD}/>
+        </div>
+
+        <Card style={{marginBottom:'18px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+            <div>
+              <div style={{fontSize:'16px',fontWeight:800,color:C.indigoD}}>📌 Promedios del período</div>
+              <div style={{fontSize:'12px',color:C.s500,marginTop:'3px'}}>
+                {dashboardRange.desde&&dashboardRange.hasta?`${dashboardRange.desde} → ${dashboardRange.hasta}`:'Todos los días disponibles'}
+              </div>
+            </div>
+            <BtnP onClick={()=>setDashboardExpanded(v=>!v)}>{dashboardExpanded?'Ocultar detalle':'Ver detalle del promedio'}</BtnP>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'10px'}}>
+            <KPI label='Prom. asistencia' value={`${dashboardPeriodAverages.asistencia}%`} bg={C.emeraldL} color={C.emeraldD}/>
+            <KPI label='Prom. horas' value={dashboardPeriodAverages.horas} bg={C.skyL} color={C.skyD}/>
+            <KPI label='Prom. producción' value={dashboardPeriodAverages.produccion} bg={C.violetL} color={C.violetD}/>
+            <KPI label='Prom. cumplimiento' value={`${dashboardPeriodAverages.cumplimiento}%`} bg={C.indigoL} color={C.indigoD}/>
+            <KPI label='Sal prom./día' value={`${dashboardSaltStats.avgKg} kg`} bg={C.orangeL} color={C.orangeD} sub={`${dashboardSaltStats.avgBolsas} bolsas · ${dashboardSaltStats.avgPallets} pallets`}/>
+            <KPI label='Días en rango' value={dashboardPeriodAverages.dias} bg={C.s50} color={C.s800}/>
+          </div>
+          {dashboardExpanded&&<div style={{display:'grid',gridTemplateColumns:gridCols('minmax(0,1fr) minmax(0,1fr)'),gap:'14px',marginTop:'16px'}}>
+            <Card style={{padding:'1rem',boxShadow:'none',border:`1px solid ${C.s200}`}}>
+              <CardTitle>📈 Promedios por día</CardTitle>
+              {dashboardCharts.labels.length?<LineChart labels={dashboardCharts.labels} datasets={[
+                {label:'% Cumpl. prom.',data:dashboardCharts.perf,borderColor:C.indigo,backgroundColor:'rgba(99,102,241,.08)',fill:true,pointBackgroundColor:C.indigo,pointBorderColor:C.white},
+                {label:'% Asistencia prom.',data:dashboardCharts.assist,borderColor:C.emerald,backgroundColor:'transparent',pointBackgroundColor:C.emerald,pointBorderColor:C.white}
+              ]} height={240} yMax={130}/>:<div style={{height:240,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>}
+            </Card>
+            <Card style={{padding:'1rem',boxShadow:'none',border:`1px solid ${C.s200}`}}>
+              <CardTitle>📦 Producción y horas promedio</CardTitle>
+              {dashboardCharts.labels.length?<BarChart labels={dashboardCharts.labels} datasets={[
+                {label:'Producción prom.',data:dashboardCharts.prod,backgroundColor:C.violet,borderRadius:5},
+                {label:'Horas prom.',data:dashboardCharts.hours,backgroundColor:C.sky,borderRadius:5}
+              ]} height={240}/>:<div style={{height:240,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>}
+            </Card>
+            <Card style={{padding:'1rem',boxShadow:'none',border:`1px solid ${C.s200}`}}>
+              <CardTitle>🧂 Consumo de sal por día</CardTitle>
+              {dashboardSaltStats.labels.length?<LineChart labels={dashboardSaltStats.labels} datasets={[
+                {label:'Consumo de sal (kg)',data:dashboardSaltStats.data,borderColor:C.orange,backgroundColor:'rgba(249,115,22,.10)',fill:true,pointBackgroundColor:C.orange,pointBorderColor:C.white,tension:0.3}
+              ]} height={240}/>:<div style={{height:240,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin consumo de sal en el rango</div>}
+            </Card>
+          </div>}
+        </Card>
+
+        <div style={{display:'grid',gridTemplateColumns:gridCols('minmax(0,1.5fr) minmax(300px,0.95fr)'),gap:'14px',marginBottom:'18px',alignItems:'start'}}>
+          <Card>
+            <CardTitle>📅 Resumen histórico del rango</CardTitle>
+            {dashboardCharts.labels.length?<BarChart labels={dashboardCharts.labels} datasets={[
+              {label:'Presentes',data:dashboardCharts.attendance.map(x=>x.presentes),backgroundColor:C.emerald,borderRadius:4},
+              {label:'Tardes',data:dashboardCharts.attendance.map(x=>x.tardes),backgroundColor:C.amber,borderRadius:4},
+              {label:'Ausentes',data:dashboardCharts.attendance.map(x=>x.ausentes),backgroundColor:C.rose,borderRadius:4}
+            ]} height={200} stacked={true}/>:<div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>}
+          </Card>
+          <div style={{display:'grid',gap:'14px'}}>
+            <Card>
+              <CardTitle>🚦 Semáforo</CardTitle>
+              {dashboardKpis.verdes+dashboardKpis.amarillos+dashboardKpis.rojos>0?<DonutChart labels={['Verde','Amarillo','Rojo']} data={[dashboardKpis.verdes,dashboardKpis.amarillos,dashboardKpis.rojos]} colors={[C.emerald,C.amber,C.rose]} height={180}/>:<div style={{height:180,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>}
+            </Card>
+            <Card>
+              <CardTitle>🚨 Alertas rápidas</CardTitle>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>{alerts.length?alerts.map((al,i)=><div key={i} style={{padding:'10px 12px',borderRadius:'10px',background:al.t==='danger'?C.roseL:C.amberL,color:al.t==='danger'?C.roseD:C.amberD,fontSize:'12px',fontWeight:700,borderLeft:`4px solid ${al.t==='danger'?C.rose:C.amber}`}}>{al.txt}</div>):<div style={{padding:'12px',borderRadius:'10px',background:C.emeraldL,color:C.emeraldD,fontWeight:700}}>Sin alertas activas</div>}</div>
+            </Card>
+          </div>
+        </div>
+
+        <Card style={{marginBottom:'18px',padding:'1rem 1.1rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:'15px',fontWeight:800,color:C.indigoD}}>Detalle por dia</div>
+              <div style={{fontSize:'12px',color:C.s500,marginTop:'3px'}}>Cada dia queda en una tarjeta compacta. Hace click para expandir solo el dia que quieras revisar.</div>
+            </div>
+            <div style={{fontSize:'12px',color:C.s500}}>Colores alternados por dia para ubicar mas rapido la informacion</div>
+          </div>
+        </Card>
+
+        <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+          {dashboardDailySummary.length===0?<Card style={{textAlign:'center',padding:'30px',color:C.s500}}>No hay información para ese rango de fechas.</Card>:dashboardDailySummary.slice().sort((a,b)=>compareDateDesc(a.fecha,b.fecha)).map((day,idx)=>{
+            const dayColor=daySectionColor(idx);
+            return <details key={day.fecha} open={idx===0} style={{background:C.white,borderRadius:'16px',border:`1px solid ${C.s200}`,boxShadow:'0 1px 4px rgba(0,0,0,.06)',overflow:'hidden'}}>
+              <summary style={{listStyle:'none',cursor:'pointer',padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:'12px',flexWrap:'wrap',borderTop:`6px solid ${dayColor}`,background:`linear-gradient(90deg,${dayColor}22,${C.white})`}}>
+                <div>
+                  <div style={{fontSize:'16px',fontWeight:800,color:C.s800}}>{dayTitle(day.fecha)}</div>
+                  <div style={{fontSize:'12px',color:C.s500,marginTop:'3px'}}>{day.total} registros · {day.presentes} presentes · {day.ausentes} ausentes</div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:gridCols('repeat(4,minmax(95px,1fr))','repeat(2,minmax(95px,1fr))'),gap:'8px',minWidth:isMobile?'100%':'390px',maxWidth:'100%'}}>
+                  <div style={{padding:'8px 10px',background:'rgba(255,255,255,.72)',borderRadius:'10px'}}><div style={{fontSize:'10px',fontWeight:700,color:C.s500,textTransform:'uppercase'}}>Asistencia</div><div style={{fontSize:'18px',fontWeight:800,color:day.avgAsistencia>=90?C.emeraldD:day.avgAsistencia>=75?C.amberD:C.roseD}}>{day.avgAsistencia}%</div></div>
+                  <div style={{padding:'8px 10px',background:'rgba(255,255,255,.72)',borderRadius:'10px'}}><div style={{fontSize:'10px',fontWeight:700,color:C.s500,textTransform:'uppercase'}}>Horas prom.</div><div style={{fontSize:'18px',fontWeight:800,color:C.skyD}}>{day.avgHoras}</div></div>
+                  <div style={{padding:'8px 10px',background:'rgba(255,255,255,.72)',borderRadius:'10px'}}><div style={{fontSize:'10px',fontWeight:700,color:C.s500,textTransform:'uppercase'}}>Prod. prom.</div><div style={{fontSize:'18px',fontWeight:800,color:C.violetD}}>{day.avgProd}</div></div>
+                  <div style={{padding:'8px 10px',background:'rgba(255,255,255,.72)',borderRadius:'10px'}}><div style={{fontSize:'10px',fontWeight:700,color:C.s500,textTransform:'uppercase'}}>Cumpl. prom.</div><div style={{fontSize:'18px',fontWeight:800,color:C.indigoD}}>{day.avgCumpl}%</div></div>
+                </div>
+              </summary>
+              <div style={{padding:'0 16px 16px'}}>
+                <div style={{fontSize:'12px',color:C.s500,margin:'2px 0 12px'}}>Detalle completo del personal para {dayTitle(day.fecha)}.</div>
+                <DataTable headers={['Nombre','Sector','Estado','E','S','Horas','Entrada vs turno','Salida vs turno','Producción','Meta','% Cumpl.','Calidad','Semáforo']} rows={day.items.slice().sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre))).map(r=>[r.nombre,r.sector,<StatusBadge key={r.id+'s'} value={r.estadoDia}/>,r.entrada||'—',r.salida||'—',r.horas,entryStatus(r),exitStatus(r),r.tipoEmpleado==='Operario'?r.produccionReal:'—',r.metaDiaria||'—',r.tipoEmpleado==='Operario'?`${r.cumplimiento}%`:'—',r.calidad,<Badge key={r.id+'b'} value={r.semaforo}/>])} searchQ={globalSearch}/>
+              </div>
+            </details>;
+          })}
+        </div>
+        </>}
+      </div>}
+
+      {tab==='PRESENTISMO'&&<div>
+        <SecH title='Presentismo' subtitle='Carga manual o importada. Maneja E y S sin mezclarlo con producción.' right={<><BtnP onClick={()=>setShowAttendanceImport(true)}>📥 Importar presentismo</BtnP><BtnN onClick={()=>setTab('CARGA_DIARIA')}>Ir a carga diaria</BtnN></>} />
+        {!activeEmployees.length?<Card style={{textAlign:'center',padding:'40px'}}><div style={{fontSize:'42px',marginBottom:'10px'}}>🧑‍🏭</div><div style={{fontSize:'18px',fontWeight:800,color:C.s800,marginBottom:'6px'}}>No hay personal activo</div><div style={{color:C.s500}}>Cargá empleados antes de registrar presentismo.</div></Card>:<div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'16px'}}>
+          <Card>
+            <CardTitle>🟢 Carga manual de presentismo</CardTitle>
+            <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'12px',marginBottom:'16px'}}>
+              <Field label='Fecha'><DateInp value={presentForm.fecha} onChange={e=>setPresentForm(p=>({...p,fecha:e.target.value}))}/></Field>
+              <Field label='Empleado'><Sel value={presentForm.legajo} onChange={e=>setPresentForm(p=>({...p,legajo:e.target.value}))}>{activeEmployees.map(e=><option key={e.id} value={e.legajo}>{e.nombre} ({e.legajo})</option>)}</Sel></Field>
+              <Field label='Estado'><Sel value={presentForm.estadoDia} onChange={e=>setPresentForm(p=>({...p,estadoDia:e.target.value}))}>{DAY_ST.map(st=><option key={st} value={st}>{st}</option>)}</Sel></Field>
+              <Field label='Observación rápida'><Inp value={presentForm.observaciones} onChange={e=>setPresentForm(p=>({...p,observaciones:e.target.value}))}/></Field>
+              <Field label='Entrada (E)'><Inp type='time' value={presentForm.entrada} onChange={e=>setPresentForm(p=>({...p,entrada:e.target.value}))}/></Field>
+              <Field label='Salida (S)'><Inp type='time' value={presentForm.salida} onChange={e=>setPresentForm(p=>({...p,salida:e.target.value}))}/></Field>
+            </div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}><BtnP onClick={addAttendance}>💾 Guardar presentismo</BtnP><BtnN onClick={()=>setPresentForm(p=>({...p,entrada:'',salida:'',observaciones:''}))}>Limpiar</BtnN></div>
+          </Card>
+          <Card style={{background:`linear-gradient(150deg,${C.emeraldL},${C.skyL})`}}>
+            <CardTitle color={C.emeraldD}>👁️ Vista previa</CardTitle>
+            {presentPreview?<div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px'}}>
+              <KPI label='Empleado' value={presentPreview.nombre} bg={C.white} color={C.emeraldD}/>
+              <KPI label='Sector' value={presentPreview.sector} bg={C.white} color={C.skyD}/>
+              <KPI label='Estado' value={presentPreview.estadoDia} bg={C.white} color={C.s800}/>
+              <KPI label='Horas' value={presentPreview.horas} bg={C.white}/>
+              <div style={{background:C.white,borderRadius:'12px',padding:'1rem',border:`1px solid ${C.s200}`}}><SLabel>E / S</SLabel><div style={{fontSize:'20px',fontWeight:800,color:C.s800}}>{presentPreview.entrada||'—'} / {presentPreview.salida||'—'}</div></div>
+              <div style={{background:C.white,borderRadius:'12px',padding:'1rem',border:`1px solid ${C.s200}`}}><SLabel>Registro existente</SLabel><div style={{fontSize:'13px',color:C.s700}}>{records.some(r=>r.fecha===presentForm.fecha&&r.legajo===presentForm.legajo)?'Se actualizará el registro de esa fecha':'Se creará un registro nuevo'}</div></div>
+              <KPI label='Entrada vs turno' value={entryStatus(presentPreview)} bg={C.white} color={C.indigoD}/>
+              <KPI label='Salida vs turno' value={exitStatus(presentPreview)} bg={C.white} color={C.violetD}/>
+            </div>:<div style={{color:C.s500}}>Seleccioná empleado.</div>}
+            <div style={{marginTop:'14px',padding:'12px',background:'rgba(255,255,255,.65)',borderRadius:'12px',fontSize:'12px',color:C.s700}}>Acá cargás solo asistencia, horarios y estado. La producción va en la otra solapa.</div>
+          </Card>
+        </div>}
+        <div style={{marginTop:'16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+            <SLabel>Presentismo cargado</SLabel>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              <DateInp value={presentListFilters.fecha} onChange={e=>setPresentListFilters(p=>({...p,fecha:e.target.value}))} style={{width:'150px'}}/>
+              <Sel value={presentListFilters.legajo} onChange={e=>setPresentListFilters(p=>({...p,legajo:e.target.value}))} style={{width:'240px'}}><option value='Todos'>Todos los operarios</option>{activeEmployees.map(e=><option key={e.id} value={e.legajo}>{e.nombre} ({e.legajo})</option>)}</Sel>
+              <BtnN onClick={()=>setPresentListFilters({fecha:presentForm.fecha,legajo:'Todos'})}>Usar fecha del formulario</BtnN>
+            </div>
+          </div>
+          <DataTable headers={['Fecha','Legajo','Nombre','Sector','Estado','E','S','Horas','Entrada vs turno','Salida vs turno','Producción vinculada','Observaciones','Acción']} rows={presentTableRecords.map(r=>[fmtDate(r.fecha),r.legajo,r.nombre,r.sector,<StatusBadge key={r.id+'st'} value={r.estadoDia}/>,r.entrada||'—',r.salida||'—',r.horas,entryStatus(r),exitStatus(r),r.produccionReal,r.observaciones||'—',<BtnD key={r.id+'d'} onClick={()=>deleteRecord(r.id)}>Eliminar</BtnD>])} searchQ={globalSearch}/>
+        </div>
+      </div>}
+
+      {tab==='CARGA_DIARIA'&&<div>
+        <SecH title='Carga diaria' subtitle='Solo producción y calidad. Si ya existe presentismo, completa el mismo registro.' right={<><BtnP onClick={()=>setShowDailyImport(true)}>📥 Importar producción</BtnP><BtnN onClick={()=>setTab('PRESENTISMO')}>Ir a presentismo</BtnN></>} />
+        {!activeEmployees.length?<Card style={{textAlign:'center',padding:'40px'}}><div style={{fontSize:'42px',marginBottom:'10px'}}>📊</div><div style={{fontSize:'18px',fontWeight:800,color:C.s800,marginBottom:'6px'}}>No hay personal activo</div><div style={{color:C.s500}}>Cargá empleados antes de registrar producción.</div></Card>:<div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'16px'}}>
+          <Card>
+            <CardTitle>📝 Carga manual de producción</CardTitle>
+            <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'12px',marginBottom:'16px'}}>
+              <Field label='Fecha'><DateInp value={dailyForm.fecha} onChange={e=>setDailyForm(p=>({...p,fecha:e.target.value}))}/></Field>
+              <Field label='Empleado'><Sel value={dailyForm.legajo} onChange={e=>{const leg=e.target.value;const emp=activeEmployees.find(x=>x.legajo===leg);setDailyForm(p=>({...p,legajo:leg,calidad:emp?.tipoEmpleado==='Operario'?'Sin errores':'No aplica'}));}}>{activeEmployees.map(e=><option key={e.id} value={e.legajo}>{e.nombre} ({e.legajo})</option>)}</Sel></Field>
+              <Field label='Producción real'><Inp type='number' min='0' value={dailyForm.produccionReal} onChange={e=>setDailyForm(p=>({...p,produccionReal:e.target.value}))}/></Field>
+              <Field label='Calidad'><Sel value={dailyForm.calidad} onChange={e=>setDailyForm(p=>({...p,calidad:e.target.value}))}>{QUAL.map(q=><option key={q} value={q}>{q}</option>)}</Sel></Field>
+              <div style={{gridColumn:'span 2'}}><Field label='Observaciones'><Txt value={dailyForm.observaciones} onChange={e=>setDailyForm(p=>({...p,observaciones:e.target.value}))}/></Field></div>
+            </div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}><BtnP onClick={addProduction}>💾 Guardar producción</BtnP><BtnN onClick={()=>setDailyForm(p=>({...p,produccionReal:'',observaciones:''}))}>Limpiar</BtnN></div>
+          </Card>
+          <Card style={{background:`linear-gradient(150deg,${C.indigoL},${C.violetL})`}}>
+            <CardTitle>👁️ Vista previa</CardTitle>
+            {dailyPreview?<div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px'}}>
+              <KPI label='Empleado' value={dailyPreview.nombre} bg={C.white} color={C.indigoD}/>
+              <KPI label='Meta diaria' value={dailyPreview.metaDiaria} bg={C.white}/>
+              <KPI label='% Cumpl.' value={`${dailyPreview.cumplimiento}%`} bg={C.white} color={dailyPreview.cumplimiento>=100?C.emeraldD:dailyPreview.cumplimiento>=80?C.amberD:C.roseD}/>
+              <KPI label='Calidad' value={dailyPreview.calidad} bg={C.white}/>
+              <div style={{background:C.white,borderRadius:'12px',padding:'1rem',border:`1px solid ${C.s200}`}}><SLabel>Semáforo</SLabel><Badge value={dailyPreview.semaforo}/></div>
+              <div style={{background:C.white,borderRadius:'12px',padding:'1rem',border:`1px solid ${C.s200}`}}><SLabel>Presentismo vinculado</SLabel><div style={{fontSize:'13px',color:C.s700}}>{records.some(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?'Se completa sobre un registro existente':'Si no hay presentismo, se crea con horario vacío para evitar estimaciones'}</div></div>
+            </div>:<div style={{color:C.s500}}>Seleccioná empleado.</div>}
+          </Card>
+        </div>}
+        <div style={{marginTop:'16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+            <SLabel>Producción cargada</SLabel>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              <DateInp value={dailyListFilters.fecha} onChange={e=>setDailyListFilters(p=>({...p,fecha:e.target.value}))} style={{width:'150px'}}/>
+              <Sel value={dailyListFilters.legajo} onChange={e=>setDailyListFilters(p=>({...p,legajo:e.target.value}))} style={{width:'240px'}}><option value='Todos'>Todos los operarios</option>{activeEmployees.map(e=><option key={e.id} value={e.legajo}>{e.nombre} ({e.legajo})</option>)}</Sel>
+              <BtnN onClick={()=>setDailyListFilters({fecha:dailyForm.fecha,legajo:'Todos'})}>Usar fecha del formulario</BtnN>
+            </div>
+          </div>
+          <DataTable headers={['Fecha','Legajo','Nombre','Sector','Estado','E','S','Producción','Meta','% Cumpl.','Calidad','Observaciones','Semáforo','Acción']} rows={dailyTableRecords.map(r=>[fmtDate(r.fecha),r.legajo,r.nombre,r.sector,<StatusBadge key={r.id+'st'} value={r.estadoDia}/>,r.entrada||'—',r.salida||'—',r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.observaciones||'—',<Badge key={r.id+'b'} value={r.semaforo}/>,<BtnD key={r.id+'d'} onClick={()=>deleteRecord(r.id)}>Eliminar</BtnD>])} searchQ={globalSearch}/>
+        </div>
+      </div>}
+
+      {tab==='SAL'&&<div>
+        <SecH title='Seguimiento de sal' subtitle='Controlá compras, consumo interno y salidas a frigorificos en kg, bolsas y pallets.' right={<>
+          <BtnP onClick={()=>setSaltForm(p=>({...p,tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS)}))}>🛒 Compra estándar 22 pallets</BtnP>
+          <BtnN onClick={()=>setSaltFilters({fechaDesde:'',fechaHasta:'',tipo:'Todos',texto:'',planta:'Todas'})}>Limpiar filtros</BtnN>
+        </>} />
+        <Card style={{marginBottom:'16px',background:`linear-gradient(135deg,${C.s50},${C.indigoL}30%)`}}>
+          <div style={{display:'grid',gridTemplateColumns:gridCols('repeat(5,minmax(150px,1fr))','repeat(2,minmax(140px,1fr))'),gap:'10px'}}>
+            <KPI label='Stock actual' value={`${saltSummary.stockKg} kg`} bg={C.indigoL} color={C.indigoD} sub={`${saltSummary.stockBolsas} bolsas · ${saltSummary.stockPallets} pallets`}/>
+            <KPI label='Ingresado (filtro)' value={`${saltSummary.ingresadoKg} kg`} bg={C.emeraldL} color={C.emeraldD} sub={`${round2(saltSummary.ingresadoKg/SAL_BAG_KG)} bolsas`}/>
+            <KPI label='Consumo planta' value={`${saltSummary.consumidoKg} kg`} bg={C.amberL} color={C.amberD} sub={`${round2(saltSummary.consumidoKg/SAL_BAG_KG)} bolsas`}/>
+            <KPI label='Salida frigorificos' value={`${saltSummary.salidaKg} kg`} bg={C.skyL} color={C.skyD} sub={`${round2(saltSummary.salidaKg/SAL_BAG_KG)} bolsas`}/>
+            <KPI label='Compras cargadas' value={saltSummary.compras} bg={C.violetL} color={C.violetD} sub={`Compra habitual: ${SAL_DEFAULT_PURCHASE_PALLETS} pallets`}/>
+          </div>
+          <div style={{marginTop:'12px',fontSize:'12px',color:C.s600}}>Reglas fijas: <b>1 bolsa = 25 kg</b> · <b>1 pallet = 48 bolsas</b> · compra habitual <b>22 pallets</b> = <b>{SAL_DEFAULT_PURCHASE_PALLETS*SAL_PALLET_BAGS} bolsas</b> = <b>{SAL_DEFAULT_PURCHASE_PALLETS*SAL_PALLET_BAGS*SAL_BAG_KG} kg</b>.</div>
+        </Card>
+
+        <div style={{display:'grid',gridTemplateColumns:gridCols('minmax(340px,0.95fr) minmax(0,1.25fr)'),gap:'16px',alignItems:'start',marginBottom:'16px'}}>
+          <Card id='salt-form-card'>
+            <CardTitle>{saltForm.id?'✏️ Editar movimiento de sal':'🧾 Movimiento de sal'}</CardTitle>
+            <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px',marginBottom:'14px'}}>
+              <Field label='Fecha'><DateInp value={saltForm.fecha} onChange={e=>setSaltForm(p=>({...p,fecha:e.target.value}))}/></Field>
+              <Field label='Tipo'><Sel value={saltForm.tipo} onChange={e=>setSaltForm(p=>({...p,tipo:e.target.value}))}><option value='Ingreso compra'>Ingreso compra</option><option value='Consumo planta'>Consumo planta</option><option value='Salida frigorifico'>Salida frigorifico</option><option value='Ajuste +'>Ajuste +</option><option value='Ajuste -'>Ajuste -</option></Sel></Field>
+              <Field label='Base de carga'><Sel value={saltForm.base} onChange={e=>setSaltForm(p=>({...p,base:e.target.value,cantidad:e.target.value==='pallets'&&p.tipo==='Ingreso compra'?String(SAL_DEFAULT_PURCHASE_PALLETS):p.cantidad}))}><option value='kg'>kg</option><option value='bolsas'>bolsas</option><option value='pallets'>pallets</option></Sel></Field>
+              <Field label='Cantidad'><Inp type='number' min='0' step='0.01' value={saltForm.cantidad} onChange={e=>setSaltForm(p=>({...p,cantidad:e.target.value}))}/></Field>
+              <Field label='Planta / destino'>
+                <div style={{display:'grid',gap:'8px'}}>
+                  <Sel value={saltForm.frigorifico} onChange={e=>setSaltForm(p=>({...p,frigorifico:e.target.value}))}>
+                    <option value=''>Seleccionar planta</option>
+                    {activeSaltPlants.map(pl=><option key={pl.id} value={pl.nombre}>{pl.nombre}</option>)}
+                  </Sel>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                    {activeSaltPlants.map(pl=><button type='button' key={pl.id} onClick={()=>setSaltForm(p=>({...p,frigorifico:pl.nombre}))} style={{padding:'6px 10px',borderRadius:'999px',border:`1px solid ${saltForm.frigorifico===pl.nombre?C.indigo:C.s300}`,background:saltForm.frigorifico===pl.nombre?C.indigoL:C.white,color:saltForm.frigorifico===pl.nombre?C.indigoD:C.s700,fontSize:'12px',fontWeight:700,cursor:'pointer'}}>{pl.nombre}</button>)}
+                    {!activeSaltPlants.length&&<span style={{fontSize:'12px',color:C.s500}}>No hay plantas activas. Dala de alta abajo.</span>}
+                  </div>
+                </div>
+              </Field>
+              <Field label='Sector interno'><Inp value={saltForm.sector} onChange={e=>setSaltForm(p=>({...p,sector:e.target.value}))} placeholder='Ej: Resalado, Lavado…'/></Field>
+              <div style={{gridColumn:isMobile?'span 1':'span 2'}}><Field label='Observaciones'><Inp value={saltForm.observaciones} onChange={e=>setSaltForm(p=>({...p,observaciones:e.target.value}))} placeholder='Proveedor, remito, motivo…'/></Field></div>
+            </div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              <BtnP onClick={saveSaltMovement}>{saltForm.id?'💾 Guardar cambios':'💾 Guardar movimiento'}</BtnP>
+              <BtnN onClick={cancelSaltEdit}>{saltForm.id?'Cancelar edición':'Limpiar'}</BtnN>
+              <BtnN onClick={()=>setSaltForm(f=>({...f,tipo:'Ingreso compra',base:'pallets',cantidad:String(SAL_DEFAULT_PURCHASE_PALLETS)}))}>Compra estándar 22 pallets</BtnN>
+            </div>
+            {saltForm.id&&<div style={{marginTop:'10px',fontSize:'12px',fontWeight:700,color:C.indigoD,background:C.indigoL,padding:'8px 10px',borderRadius:'10px'}}>Estás editando un movimiento existente. Al guardar, se actualiza sin borrar el historial.</div>}
+          </Card>
+
+          <Card style={{background:`linear-gradient(150deg,${C.skyL},${C.emeraldL})`}}>
+            <CardTitle>👁️ Vista previa</CardTitle>
+            <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px'}}>
+              <KPI label='Tipo' value={saltPreview.tipo} bg={C.white} color={C.indigoD}/>
+              <KPI label='Impacto stock' value={`${saltPreview.signo>0?'+':'-'}${saltPreview.kg} kg`} bg={C.white} color={saltPreview.signo>0?C.emeraldD:C.roseD}/>
+              <KPI label='kg' value={saltPreview.kg} bg={C.white}/>
+              <KPI label='Bolsas' value={saltPreview.bolsas} bg={C.white}/>
+              <KPI label='Pallets' value={saltPreview.pallets} bg={C.white}/>
+              <div style={{background:C.white,borderRadius:'12px',padding:'1rem',border:`1px solid ${C.s200}`}}><SLabel>Destino / uso</SLabel><div style={{fontSize:'13px',color:C.s700}}>{saltPreview.frigorifico||saltPreview.sector||'—'}</div></div>
+            </div>
+          </Card>
+        </div>
+
+        <Card style={{marginBottom:'16px'}}>
+          <CardTitle>🔎 Filtros de seguimiento</CardTitle>
+          <div style={{display:'grid',gridTemplateColumns:gridCols('2fr 1fr 1fr 1fr 1fr','1fr 1fr'),gap:'10px'}}>
+            <Field label='Buscar'><Inp value={saltFilters.texto} onChange={e=>setSaltFilters(p=>({...p,texto:e.target.value}))} placeholder='Frigorifico, sector, observación…'/></Field>
+            <Field label='Tipo'><Sel value={saltFilters.tipo} onChange={e=>setSaltFilters(p=>({...p,tipo:e.target.value}))}><option value='Todos'>Todos</option><option value='Ingreso compra'>Ingreso compra</option><option value='Consumo planta'>Consumo planta</option><option value='Salida frigorifico'>Salida frigorifico</option><option value='Ajuste +'>Ajuste +</option><option value='Ajuste -'>Ajuste -</option></Sel></Field>
+            <Field label='Planta'><Sel value={saltFilters.planta} onChange={e=>setSaltFilters(p=>({...p,planta:e.target.value}))}><option value='Todas'>Todas</option>{activeSaltPlants.map(pl=><option key={pl.id} value={pl.nombre}>{pl.nombre}</option>)}</Sel></Field>
+            <Field label='Desde'><DateInp value={saltFilters.fechaDesde} onChange={e=>setSaltFilters(p=>({...p,fechaDesde:e.target.value}))}/></Field>
+            <Field label='Hasta'><DateInp value={saltFilters.fechaHasta} onChange={e=>setSaltFilters(p=>({...p,fechaHasta:e.target.value}))}/></Field>
+          </div>
+        </Card>
+
+        <Card style={{marginBottom:'16px'}}>
+          <CardTitle>🏭 Plantas activas e inactivas</CardTitle>
+          <div style={{display:'grid',gridTemplateColumns:gridCols('minmax(0,1.2fr) minmax(0,0.8fr)','1fr'),gap:'14px',alignItems:'start'}}>
+            <div>
+              <SLabel>Activas</SLabel>
+              <div style={{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'12px'}}>
+                {activeSaltPlants.map(pl=><div key={pl.id} style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'8px 10px',borderRadius:'999px',background:C.emeraldL,color:C.emeraldD,fontSize:'12px',fontWeight:700}}><span>{pl.nombre}</span><button type='button' onClick={()=>setSaltPlantStatus(pl.id,false)} style={{border:'none',background:'transparent',color:C.emeraldD,cursor:'pointer',fontWeight:800}}>Dar de baja</button></div>)}
+                {!activeSaltPlants.length&&<span style={{fontSize:'12px',color:C.s500}}>No hay plantas activas.</span>}
+              </div>
+              <SLabel>Inactivas</SLabel>
+              <div style={{display:'flex',flexWrap:'wrap',gap:'8px'}}>
+                {inactiveSaltPlants.map(pl=><div key={pl.id} style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'8px 10px',borderRadius:'999px',background:C.s100,color:C.s600,fontSize:'12px',fontWeight:700,border:`1px solid ${C.s300}`}}><span>{pl.nombre}</span><button type='button' onClick={()=>setSaltPlantStatus(pl.id,true)} style={{border:'none',background:'transparent',color:C.indigoD,cursor:'pointer',fontWeight:800}}>Dar de alta</button></div>)}
+                {!inactiveSaltPlants.length&&<span style={{fontSize:'12px',color:C.s500}}>No hay plantas dadas de baja.</span>}
+              </div>
+            </div>
+            <div>
+              <SLabel>Agregar planta nueva</SLabel>
+              <div style={{display:'grid',gap:'8px'}}>
+                <Inp value={newSaltPlant} onChange={e=>setNewSaltPlant(e.target.value)} placeholder='Ej: Deltacar Norte'/>
+                <BtnP onClick={addSaltPlant}>➕ Dar de alta planta</BtnP>
+                <div style={{fontSize:'12px',color:C.s500}}>Plantas activas hoy: Deltacar, Alba, Cooperativa Parana, Santa Ines y Suipacha.</div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card style={{marginBottom:'16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
+            <div>
+              <CardTitle>📉 Línea de consumo de sal</CardTitle>
+              <div style={{fontSize:'12px',color:C.s500,marginTop:'-6px'}}>Se muestra el consumo interno por día según los filtros aplicados.</div>
+            </div>
+            <div style={{fontSize:'12px',fontWeight:700,color:C.orangeD,background:C.orangeL,padding:'6px 10px',borderRadius:'999px'}}>Promedio: {saltConsumptionTrend.avgKg} kg/día · {saltConsumptionTrend.avgBolsas} bolsas/día</div>
+          </div>
+          {saltConsumptionTrend.labels.length?<LineChart labels={saltConsumptionTrend.labels} datasets={[
+            {label:'Consumo planta (kg)',data:saltConsumptionTrend.kg,borderColor:C.orange,backgroundColor:'rgba(249,115,22,.10)',fill:true,pointBackgroundColor:C.orange,pointBorderColor:C.white,tension:0.3}
+          ]} height={260}/>:<div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin consumos de sal para graficar</div>}
+        </Card>
+
+        <div style={{display:'grid',gridTemplateColumns:gridCols('minmax(0,1.25fr) minmax(300px,0.9fr)'),gap:'16px',alignItems:'start',marginBottom:'16px'}}>
+          <div>
+            <Card>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
+                <div>
+                  <div style={{fontSize:'12px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.06em'}}>Movimientos de sal</div>
+                  <div style={{fontSize:'14px',fontWeight:800,color:C.s800,marginTop:'4px'}}>Vista ordenada por fecha</div>
+                </div>
+                <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                  <span style={{fontSize:'12px',fontWeight:700,color:C.s700,background:C.s100,padding:'6px 10px',borderRadius:'999px'}}>{saltFiltered.length} movimiento{saltFiltered.length!==1?'s':''}</span>
+                  <span style={{fontSize:'12px',fontWeight:700,color:C.indigoD,background:C.indigoL,padding:'6px 10px',borderRadius:'999px'}}>Orden: más reciente primero</span>
+                </div>
+              </div>
+              <div style={{overflowX:'auto',borderRadius:'12px',border:`1px solid ${C.s200}`,boxShadow:'0 1px 3px rgba(0,0,0,.04)'}}>
+                <table style={{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:'13px',minWidth:'980px'}}>
+                  <thead>
+                    <tr style={{background:`linear-gradient(90deg,${C.indigoL},${C.violetL})`}}>
+                      {['Fecha','Tipo','Frigorífico','Sector','kg','Bolsas','Pallets','Impacto','Obs.','Acciones'].map((h,i)=><th key={i} style={{position:'sticky',top:0,padding:'10px 12px',textAlign:i>=4&&i<=7?'right':'left',fontWeight:800,color:C.indigoD,whiteSpace:'nowrap',borderBottom:`1px solid ${C.s200}`,fontSize:'12px',background:`linear-gradient(90deg,${C.indigoL},${C.violetL})`}}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!saltFiltered.length?<tr><td colSpan={10} style={{padding:'30px',textAlign:'center',color:C.s400}}>Sin movimientos para mostrar</td></tr>:saltFiltered.map((m,idx)=>{
+                      const meta=saltTypeMeta(m.tipo);
+                      return <tr key={m.id} style={{background:saltForm.id===m.id?C.indigoL:(idx%2===0?C.white:C.s50)}}>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,whiteSpace:'nowrap',fontWeight:700,color:C.s800}}>{fmtDate(m.fecha)}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`}}><span style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'4px 10px',borderRadius:'999px',background:meta.bg,color:meta.color,fontSize:'11px',fontWeight:800,border:`1px solid ${meta.border}`}}>{meta.label}</span></td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,whiteSpace:'nowrap',color:C.s700}}>{m.frigorifico||'—'}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,whiteSpace:'nowrap',color:C.s700}}>{m.sector||'—'}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,textAlign:'right',fontVariantNumeric:'tabular-nums',fontWeight:700,color:C.s800}}>{m.kg}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,textAlign:'right',fontVariantNumeric:'tabular-nums',color:C.s700}}>{m.bolsas}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,textAlign:'right',fontVariantNumeric:'tabular-nums',color:C.s700}}>{m.pallets}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,textAlign:'right',whiteSpace:'nowrap'}}><span style={{color:m.signo>0?C.emeraldD:C.roseD,fontWeight:900,fontVariantNumeric:'tabular-nums'}}>{m.signo>0?'+':'-'}{m.kg} kg</span></td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`,minWidth:'180px',color:C.s600}}>{m.observaciones||'—'}</td>
+                        <td style={{padding:'10px 12px',borderBottom:`1px solid ${C.s100}`}}>
+                          <div style={{display:'flex',gap:'6px',justifyContent:'flex-end',flexWrap:'wrap'}}>
+                            <BtnS onClick={()=>editSaltMovement(m)} style={{fontWeight:700}}>Editar</BtnS>
+                            <BtnD onClick={()=>deleteSaltMovement(m.id)}>Eliminar</BtnD>
+                          </div>
+                        </td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{marginTop:'10px',fontSize:'12px',color:C.s500}}>Consejo: usá <b>Editar</b> para corregir kg, bolsas, pallets, destino o fecha sin borrar el movimiento.</div>
+            </Card>
+          </div>
+          <div style={{display:'grid',gap:'16px'}}>
+            <Card>
+              <CardTitle>🏭 Salida a frigorificos</CardTitle>
+              <DataTable headers={['Destino','kg','Bolsas','Pallets']} rows={saltByFrigorifico.map(r=>[r.nombre,r.kg,r.bolsas,r.pallets])}/>
+            </Card>
+            <Card>
+              <CardTitle>🏭 Consumo por sector</CardTitle>
+              <DataTable headers={['Sector','kg','Bolsas','Pallets']} rows={saltBySector.map(r=>[r.nombre,r.kg,r.bolsas,r.pallets])}/>
+            </Card>
+          </div>
+        </div>
+      </div>}
+
+      {tab==='BASE_GENERAL'&&<div>
+        <SecH title='Base general' subtitle='Todos los registros juntos: presentismo + producción' />
+        <DataTable headers={['Fecha','Sem.','Legajo','Nombre','Sector','Turno','Tipo','Estado','E','S','Horas','Entrada vs turno','Salida vs turno','Producción','Meta','% Cumpl.','Calidad','Puntaje','Semáforo','Acción']} rows={(globalSearch?searchedRecords:records).slice().sort((a,b)=>compareDateDesc(a.fecha,b.fecha)||String(a.nombre).localeCompare(String(b.nombre))).map(r=>[fmtDate(r.fecha),r.semana,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,<StatusBadge key={r.id+'s'} value={r.estadoDia}/>,r.entrada||'—',r.salida||'—',r.horas,entryStatus(r),exitStatus(r),r.produccionReal,r.metaDiaria,r.tipoEmpleado==='Operario'?`${r.cumplimiento}%`:'—',r.calidad,r.puntajeFinal??'—',<Badge key={r.id+'b'} value={r.semaforo}/>,<BtnD key={r.id+'d'} onClick={()=>deleteRecord(r.id)}>Eliminar</BtnD>])} searchQ={globalSearch}/>
+      </div>}
+
+      {tab==='SEGUIMIENTO'&&<div>
+        <SecH title='Seguimiento semanal' subtitle='Filtrá una semana o miralas agrupadas por color para no mezclar datos.' right={<Sel value={weekFilter} onChange={e=>setWeekFilter(e.target.value)} style={{width:'180px'}}><option value='Todas'>Todas las semanas</option>{allWeeks.map(w=><option key={w} value={w}>Semana {w}</option>)}</Sel>} />
+        <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'14px',marginBottom:'18px'}}>
+          <Card><CardTitle>📊 Rendimiento semanal</CardTitle>{weeklyFiltered.length?<BarChart labels={weeklyFiltered.map(it=>seguimientoChartLabel(it))} datasets={[{label:'% Rendimiento',data:weeklyFiltered.map(it=>it.rendimiento),backgroundColor:weeklyFiltered.map(it=>it.sem==='VERDE'?C.emerald:it.sem==='AMARILLO'?C.amber:it.sem==='ROJO'?C.rose:C.s400),borderRadius:5}]} height={260}/>:<div style={{height:260,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>}</Card>
+          <Card><CardTitle>📅 Asistencia semanal</CardTitle>{weeklyFiltered.length?<BarChart labels={weeklyFiltered.map(it=>seguimientoChartLabel(it))} datasets={[{label:'Presentes',data:weeklyFiltered.map(it=>it.pres),backgroundColor:C.emerald,borderRadius:4},{label:'Tardes',data:weeklyFiltered.map(it=>it.tarde),backgroundColor:C.amber,borderRadius:4},{label:'Ausentes',data:weeklyFiltered.map(it=>it.ausente),backgroundColor:C.rose,borderRadius:4}]} height={260} stacked={true}/>:<div style={{height:260,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>}</Card>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+          {weeklyGrouped.length===0?<Card style={{textAlign:'center',padding:'30px',color:C.s500}}>Sin semanas para mostrar.</Card>:weeklyGrouped.map(([week,items])=><Card key={week} style={{borderTop:`6px solid ${weekColor(week)}`}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingBottom:'8px',borderBottom:`1px solid ${C.s200}`}}>
+              <div style={{fontSize:'16px',fontWeight:800,color:C.s800}}>Semana {week}</div>
+              <div style={{fontSize:'12px',fontWeight:700,color:C.s500}}>{items.length} registro{items.length!==1?'s':''}</div>
+            </div>
+            <DataTable headers={['Nombre','Sector','Días prog.','Presentes','Tardes','Ausentes','% Asistencia','% Rendimiento','Errores','Semáforo']} rows={items.map(it=>[<div key={`nm-${it.legajo}-${it.semana}`} style={{whiteSpace:'normal',lineHeight:1.25,minWidth:'190px',fontWeight:700}}>{it.nombre}</div>,it.sector,it.prog,it.pres,it.tarde,it.ausente,`${it.asistencia}%`,`${it.rendimiento}%`,it.err,<Badge key={`${it.legajo}-${it.semana}`} value={it.sem}/>])} searchQ={globalSearch}/>
+          </Card>)}
+        </div>
+      </div>}
+
+      {tab==='FICHA_OPERARIO'&&<div>
+        <SecH title='Ficha del operario' subtitle='Ahora elegís exactamente contra quién comparar.' right={<div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+          <Sel value={fichaLeg} onChange={e=>setFichaLeg(e.target.value)} style={{width:'240px'}}>{activeEmployees.map(e=><option key={e.id} value={e.legajo}>{e.nombre} ({e.legajo})</option>)}</Sel>
+          <Sel value={compareSelect} onChange={e=>setCompareSelect(e.target.value)} style={{width:'240px'}}><option value=''>Comparar con…</option>{activeEmployees.filter(e=>e.legajo!==fichaLeg&&!compareLegs.includes(e.legajo)).map(e=><option key={e.id} value={e.legajo}>{e.nombre} ({e.legajo})</option>)}</Sel>
+          <BtnN onClick={addComparator}>Agregar comparación</BtnN>
+        </div>} />
+        {compareLegs.length>0&&<div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>{compareLegs.map(leg=>{const emp=employees.find(e=>e.legajo===leg);return <span key={leg} style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'6px 10px',borderRadius:'999px',background:C.indigoL,color:C.indigoD,fontSize:'12px',fontWeight:700}}>{emp?.nombre||leg}<button onClick={()=>setCompareLegs(p=>p.filter(x=>x!==leg))} style={{background:'none',border:'none',cursor:'pointer',color:C.indigoD,fontWeight:800}}>×</button></span>;})}</div>}
+        {!fichaEmp?<Card style={{textAlign:'center',padding:'30px',color:C.s500}}>No hay empleados activos para mostrar.</Card>:<>
+        {compareEmployees.length>1&&<Card style={{marginBottom:'16px'}}><CardTitle>📊 Comparación elegida</CardTitle>{(()=>{const lastDates=unique(records.filter(r=>compareEmployees.includes(r.legajo)).map(r=>r.fecha)).sort().slice(-10);const datasets=compareEmployees.map((leg,i)=>{const emp=employees.find(e=>e.legajo===leg);return {label:emp?.nombre.split(' ')[0]||leg,data:lastDates.map(d=>records.find(r=>r.fecha===d&&r.legajo===leg)?.cumplimiento??null),borderColor:CHART_COLORS[i],backgroundColor:'transparent',tension:0.35,pointBackgroundColor:CHART_COLORS[i],spanGaps:true};});return lastDates.length?<LineChart labels={lastDates.map(fmtDate)} datasets={datasets} height={220} yMax={130}/>:<div style={{height:220,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin datos</div>;})()}</Card>}
+        <div style={{display:'grid',gridTemplateColumns:gridCols('320px 1fr'),gap:'16px'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+            <div style={{background:`linear-gradient(150deg,${C.indigoL},${C.violetL})`,borderRadius:'16px',border:`1px solid ${C.s200}`,padding:'1.25rem'}}>
+              <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'12px'}}>{[['Nombre',fichaEmp.nombre],['Legajo',fichaEmp.legajo],['Sector',fichaEmp.sector],['Turno',fichaEmp.turno],['Tipo',fichaEmp.tipoEmpleado],['Supervisor',fichaEmp.supervisor||'—']].map(([l,v])=><div key={l}><div style={{fontSize:'10px',fontWeight:700,color:C.indigoD,textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:'3px'}}>{l}</div><div style={{fontSize:'13px',fontWeight:600,color:C.s800}}>{v}</div></div>)}</div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px'}}>
+              <KPI label='Asistencia' value={fichaStats.asistencia} bg={C.indigoL} color={C.indigoD}/>
+              <KPI label='Prod. prom.' value={fichaStats.prodProm} bg={C.violetL} color={C.violetD}/>
+              <KPI label='% Cumpl.' value={fichaStats.cumplProm} bg={C.skyL} color={C.skyD}/>
+              <div style={{background:C.white,borderRadius:'12px',padding:'1rem',border:`1px solid ${C.s200}`}}><SLabel>Semáforo prom.</SLabel><Badge value={fichaStats.sem}/></div>
+            </div>
+            <Card><CardTitle>🚦 Semáforo histórico</CardTitle>{fichaRecs.length?<DonutChart labels={['Verde','Amarillo','Rojo','N/A']} data={[fichaRecs.filter(r=>r.semaforo==='VERDE').length,fichaRecs.filter(r=>r.semaforo==='AMARILLO').length,fichaRecs.filter(r=>r.semaforo==='ROJO').length,fichaRecs.filter(r=>r.semaforo==='NA').length]} colors={[C.emerald,C.amber,C.rose,C.s400]} height={160}/>:<div style={{height:160,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin registros</div>}</Card>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+            <Card><CardTitle>📈 Evolución del rendimiento</CardTitle>{fichaRecs.length?<LineChart labels={fichaRecs.slice(-14).map(r=>fmtDate(r.fecha))} datasets={[{label:'% Cumplimiento',data:fichaRecs.slice(-14).map(r=>r.tipoEmpleado==='Operario'?r.cumplimiento:null),borderColor:C.indigo,backgroundColor:'rgba(99,102,241,.08)',fill:true,tension:0.35,pointBackgroundColor:fichaRecs.slice(-14).map(r=>r.semaforo==='VERDE'?C.emerald:r.semaforo==='AMARILLO'?C.amber:r.semaforo==='ROJO'?C.rose:C.s400),pointRadius:5,spanGaps:true},{label:'Puntaje final',data:fichaRecs.slice(-14).map(r=>r.puntajeFinal),borderColor:C.violetD,backgroundColor:'transparent',tension:0.35,borderDash:[5,5],spanGaps:true}]} height={210} yMax={130}/>:<div style={{height:210,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin registros</div>}</Card>
+            <Card><CardTitle>📅 Asistencia / horas</CardTitle>{fichaRecs.length?<BarChart labels={fichaRecs.slice(-14).map(r=>fmtDate(r.fecha))} datasets={[{label:'Horas',data:fichaRecs.slice(-14).map(r=>r.horas),backgroundColor:fichaRecs.slice(-14).map(r=>r.estadoDia==='Presente'?C.emerald:r.estadoDia==='Tarde'?C.amber:r.estadoDia==='Ausente'?C.rose:C.s300),borderRadius:4}]} height={170}/>:<div style={{height:170,display:'flex',alignItems:'center',justifyContent:'center',color:C.s400}}>Sin registros</div>}</Card>
+            <div><SLabel>Últimos registros</SLabel><DataTable headers={['Fecha','Estado','E','S','Entrada vs turno','Salida vs turno','Producción','Meta','% Cumpl.','Horas','Puntaje','Semáforo']} rows={fichaRecs.slice().reverse().slice(0,15).map(r=>[fmtDate(r.fecha),<StatusBadge key={r.id+'s'} value={r.estadoDia}/>,r.entrada||'—',r.salida||'—',entryStatus(r),exitStatus(r),r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.horas,r.puntajeFinal??'—',<Badge key={r.id+'b'} value={r.semaforo}/>])} searchQ={globalSearch}/></div>
+          </div>
+        </div>
+        </>}
+      </div>}
+
+      {tab==='HISTORIAL'&&<div>
+        <SecH title='Historial' subtitle='Buscador avanzado de presentes, producción, sal y movimientos de personal.' />
+        <Card style={{marginBottom:'16px'}}>
+          <div style={{display:'grid',gridTemplateColumns:gridCols('2fr 1fr 1fr 1fr 1fr 1fr','repeat(2,minmax(120px,1fr))'),gap:'10px'}}>
+            <Field label='Buscar'><Inp value={histFilters.texto} onChange={e=>setHistFilters(p=>({...p,texto:e.target.value}))} placeholder='Nombre, legajo, detalle…'/></Field>
+            <Field label='Tipo'><Sel value={histFilters.tipo} onChange={e=>setHistFilters(p=>({...p,tipo:e.target.value}))}><option value='Todos'>Todos</option><option value='Presentismo'>Presentismo</option><option value='Producción'>Producción</option><option value='Movimientos'>Movimientos</option><option value='Sal'>Sal</option></Sel></Field>
+            <Field label='Desde'><DateInp value={histFilters.fechaDesde} onChange={e=>setHistFilters(p=>({...p,fechaDesde:e.target.value}))}/></Field>
+            <Field label='Hasta'><DateInp value={histFilters.fechaHasta} onChange={e=>setHistFilters(p=>({...p,fechaHasta:e.target.value}))}/></Field>
+            <Field label='Semana'><Sel value={histFilters.semana} onChange={e=>setHistFilters(p=>({...p,semana:e.target.value}))}><option value='Todas'>Todas</option>{allWeeks.map(w=><option key={w} value={w}>Semana {w}</option>)}</Sel></Field>
+            <Field label='Sector'><Sel value={histFilters.sector} onChange={e=>setHistFilters(p=>({...p,sector:e.target.value}))}><option value='Todos'>Todos</option>{sectors.map(s=><option key={s} value={s}>{s}</option>)}</Sel></Field>
+          </div>
+        </Card>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'10px',marginBottom:'16px'}}>
+          <KPI label='Filas' value={historyFiltered.length} bg={C.indigoL} color={C.indigoD}/>
+          <KPI label='Presentismo' value={historyFiltered.filter(r=>r.tipo==='Presentismo').length} bg={C.emeraldL} color={C.emeraldD}/>
+          <KPI label='Producción' value={historyFiltered.filter(r=>r.tipo==='Producción').length} bg={C.skyL} color={C.skyD}/>
+          <KPI label='Movimientos' value={historyFiltered.filter(r=>r.tipo==='Movimientos').length} bg={C.amberL} color={C.amberD}/>
+          <KPI label='Sal' value={historyFiltered.filter(r=>r.tipo==='Sal').length} bg={C.violetL} color={C.violetD}/>
+        </div>
+        <DataTable headers={['Fecha','Semana','Tipo','Legajo','Nombre','Sector','Estado / Cambio','Detalle']} rows={historyFiltered.map(r=>[fmtDate(r.fecha),r.semana||'—',r.tipo,r.legajo,r.nombre,r.sector||'—',r.estado,r.detalle])} searchQ={histFilters.texto}/>
+      </div>}
+
+      {tab==='ADMIN_PERSONAL'&&<div>
+        <SecH title='Administración de personal' subtitle='La baja ahora es lógica: se mueve a "Personal dado de baja" y se puede reactivar.' right={<BtnP onClick={()=>setShowEmpImport(true)}>📥 Importar desde archivo</BtnP>} />
+        <div style={{display:'grid',gridTemplateColumns:gridCols('370px 1fr'),gap:'16px',alignItems:'start'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+            <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px'}}>
+              <KPI label='Activos' value={activeEmployees.length} bg={C.indigoL} color={C.indigoD}/>
+              <KPI label='Baja' value={inactiveEmployees.length} bg={C.roseL} color={C.roseD}/>
+              <KPI label='Operarios' value={activeEmployees.filter(e=>e.tipoEmpleado==='Operario').length} bg={C.emeraldL} color={C.emeraldD}/>
+              <KPI label='Movimientos' value={movements.length} bg={C.amberL} color={C.amberD}/>
+            </div>
+            <Card>
+              <CardTitle>{empForm.id?'✏️ Editando empleado':'➕ Nuevo empleado'}</CardTitle>
+              <div style={{display:'grid',gridTemplateColumns:gridCols('1fr 1fr'),gap:'10px',marginBottom:'14px'}}>
+                <Field label='Legajo'><Inp placeholder='Auto si vacío' value={empForm.legajo} onChange={e=>setEmpForm(p=>({...p,legajo:e.target.value}))}/></Field>
+                <Field label='Nombre'><Inp value={empForm.nombre} onChange={e=>setEmpForm(p=>({...p,nombre:e.target.value}))}/></Field>
+                <Field label='Sector'><Inp value={empForm.sector} onChange={e=>setEmpForm(p=>({...p,sector:e.target.value}))}/></Field>
+                <Field label='Turno'><Sel value={empForm.turno} onChange={e=>setEmpForm(p=>({...p,turno:e.target.value}))}>{TURNOS.map(t=><option key={t} value={t}>{t}</option>)}</Sel></Field>
+                <Field label='Tipo'><Sel value={empForm.tipoEmpleado} onChange={e=>setEmpForm(p=>({...p,tipoEmpleado:e.target.value}))}>{ETYPES.map(t=><option key={t} value={t}>{t}</option>)}</Sel></Field>
+                <Field label='Supervisor'><Inp value={empForm.supervisor} onChange={e=>setEmpForm(p=>({...p,supervisor:e.target.value}))}/></Field>
+                <Field label='Meta diaria'><Inp type='number' min='0' value={empForm.metaDiaria} onChange={e=>setEmpForm(p=>({...p,metaDiaria:e.target.value}))}/></Field>
+                <Field label='Activo'><Sel value={empForm.activo?'Sí':'No'} onChange={e=>setEmpForm(p=>({...p,activo:e.target.value==='Sí'}))}><option value='Sí'>Sí</option><option value='No'>No</option></Sel></Field>
+              </div>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}><BtnP onClick={saveEmployee}>{empForm.id?'Guardar cambios':'Agregar empleado'}</BtnP><BtnN onClick={()=>setEmpForm(emptyEmp)}>Limpiar</BtnN></div>
+            </Card>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
+            <div><SLabel>Personal activo</SLabel><DataTable headers={['Legajo','Nombre','Sector','Turno','Tipo','Supervisor','Meta','Acción']} rows={activeEmployees.map(e=>[<span key={e.id+'lg'} style={{fontFamily:'monospace',fontWeight:700,color:C.indigoD}}>{e.legajo}</span>,e.nombre,e.sector,e.turno,e.tipoEmpleado,e.supervisor||'—',e.metaDiaria,<div key={e.id+'ab'} style={{display:'flex',gap:'6px'}}><BtnS onClick={()=>setEmpForm({id:e.id,legajo:e.legajo,nombre:e.nombre,sector:e.sector,turno:e.turno,tipoEmpleado:e.tipoEmpleado,supervisor:e.supervisor,metaDiaria:String(e.metaDiaria),activo:e.activo})}>Editar</BtnS><BtnD onClick={()=>sendToBaja(e.id)}>Dar de baja</BtnD></div>])} searchQ={globalSearch}/></div>
+            <div><SLabel>Personal dado de baja</SLabel><DataTable headers={['Legajo','Nombre','Sector','Turno','Tipo','Supervisor','Meta','Acción']} rows={inactiveEmployees.map(e=>[<span key={e.id+'lg'} style={{fontFamily:'monospace',fontWeight:700,color:C.roseD}}>{e.legajo}</span>,e.nombre,e.sector,e.turno,e.tipoEmpleado,e.supervisor||'—',e.metaDiaria,<BtnP key={e.id+'r'} onClick={()=>reactivateEmployee(e.id)} style={{padding:'6px 12px'}}>Reactivar</BtnP>])} searchQ={globalSearch}/></div>
+            <div><SLabel>Historial de movimientos</SLabel><DataTable headers={['Fecha','Legajo','Nombre','Cambio','Antes','Después','Autoriza','Activo','Observación']} rows={movements.map(m=>[fmtDate(m.fecha),m.legajo,m.nombre,m.cambio,m.valorAnterior,m.valorNuevo,m.autoriza,m.activo,m.observacion])} searchQ={globalSearch}/></div>
+          </div>
+        </div>
+      </div>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
