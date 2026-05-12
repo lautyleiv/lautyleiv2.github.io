@@ -13,31 +13,57 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root{
-  --blue:#2563EB;--blue-dark:#1D4ED8;--blue-light:#EFF6FF;--blue-mid:#BFDBFE;
-  --slate-50:#F8FAFC;--slate-100:#F1F5F9;--slate-200:#E2E8F0;--slate-300:#CBD5E1;
-  --slate-400:#94A3B8;--slate-500:#64748B;--slate-600:#475569;--slate-700:#334155;
-  --slate-800:#1E293B;--slate-900:#0F172A;
-  --green:#10B981;--green-light:#D1FAE5;--green-dark:#047857;
-  --amber:#F59E0B;--amber-light:#FEF3C7;--amber-dark:#92400E;
-  --red:#F43F5E;--red-light:#FFE4E6;--red-dark:#9F1239;
-  --sidebar-w:220px;
+  --blue:#2563EB;--blue-dark:#1D4ED8;--blue-light:#EFF6FF;--blue-mid:#DBEAFE;
+  --gray-900:#0F172A;--gray-800:#1E293B;--gray-700:#334155;--gray-600:#475569;
+  --gray-500:#64748B;--gray-400:#94A3B8;--gray-300:#CBD5E1;--gray-200:#E2E8F0;
+  --gray-100:#F1F5F9;--gray-50:#F8FAFC;
+  --green:#16A34A;--green-light:#DCFCE7;--green-dark:#15803D;
+  --amber:#D97706;--amber-light:#FEF3C7;--amber-dark:#92400E;
+  --red:#DC2626;--red-light:#FEE2E2;--red-dark:#991B1B;
+  --sky:#0284C7;--sky-light:#E0F2FE;--sky-dark:#0369A1;
+  --sidebar-w:240px;
+  --radius:8px;--radius-lg:12px;--radius-xl:16px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+  --shadow:0 1px 4px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--slate-50);min-height:100vh;color:var(--slate-800);}
-input,select,button,textarea{font-family:inherit;}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;}
+html{font-size:14px;}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--gray-50);min-height:100vh;color:var(--gray-800);-webkit-font-smoothing:antialiased;}
+input,select,button,textarea{font-family:inherit;font-size:inherit;}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:-1px;}
 button:active{transform:scale(0.98);}
-::-webkit-scrollbar{width:6px;height:6px;}
-::-webkit-scrollbar-thumb{background:var(--slate-300);border-radius:999px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:99px;}
 ::-webkit-scrollbar-track{background:transparent;}
+mark{background:#fef9c3;border-radius:2px;padding:0 2px;}
+
+/* Sidebar nav buttons — light sidebar */
+.snav{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:var(--radius);border:none;
+  background:transparent;color:var(--gray-500);
+  font-size:13px;font-weight:500;cursor:pointer;
+  text-align:left;width:100%;transition:all .15s;
+  white-space:nowrap;overflow:hidden;
+}
+.snav:hover{background:var(--gray-100);color:var(--gray-800);}
+.snav.active{background:var(--blue-light);color:var(--blue);font-weight:700;}
+.snav.active .snav-dot{opacity:1;}
+.snav-dot{width:5px;height:5px;border-radius:50%;background:var(--blue);margin-left:auto;flex-shrink:0;opacity:0;transition:opacity .15s;}
+
+/* Table row hover */
 .row-hover:hover td{background:var(--blue-light)!important;}
-mark{background:#fef08a;border-radius:2px;padding:0 1px;}
-.sidebar-nav-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;border:none;background:transparent;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;cursor:pointer;text-align:left;width:100%;transition:background .15s,color .15s;}
-.sidebar-nav-btn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);}
-.sidebar-nav-btn.active{background:var(--blue);color:#fff;font-weight:700;}
-.matrix-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
-@media(max-width:900px){body{font-size:14px;}table{font-size:12px;}}
+
+/* Tooltip on dots */
+[title]{cursor:default;}
+
+@media(max-width:900px){
+  body{font-size:13px;}
+  table{font-size:12px;}
+}
 </style>
 </head>
 <body>
@@ -594,59 +620,130 @@ const ETYPES=['Operario','Supervisor','Administrativo','Mantenimiento','Otro'];
 
 /* ────────── COLORS ────────── */
 const C={
-  blue:'#2563EB',blueD:'#1D4ED8',blueL:'#EFF6FF',blueMid:'#BFDBFE',
+  blue:'#2563EB',blueD:'#1D4ED8',blueL:'#EFF6FF',blueMid:'#DBEAFE',
   indigo:'#2563EB',indigoD:'#1D4ED8',indigoL:'#EFF6FF',
   violet:'#7C3AED',violetD:'#5B21B6',violetL:'#EDE9FE',
-  emerald:'#10B981',emeraldD:'#047857',emeraldL:'#D1FAE5',
-  amber:'#F59E0B',amberD:'#92400E',amberL:'#FEF3C7',
-  rose:'#F43F5E',roseD:'#9F1239',roseL:'#FFE4E6',
-  sky:'#0EA5E9',skyD:'#0369A1',skyL:'#E0F2FE',
-  orange:'#F97316',orangeD:'#9A3412',orangeL:'#FFEDD5',
-  s50:'#F8FAFC',s100:'#F1F5F9',s200:'#E2E8F0',s300:'#CBD5E1',s400:'#94A3B8',s500:'#64748B',s600:'#475569',s700:'#334155',s800:'#1E293B',s900:'#0F172A',white:'#FFFFFF'
+  emerald:'#16A34A',emeraldD:'#15803D',emeraldL:'#DCFCE7',
+  amber:'#D97706',amberD:'#92400E',amberL:'#FEF3C7',
+  rose:'#DC2626',roseD:'#991B1B',roseL:'#FEE2E2',
+  sky:'#0284C7',skyD:'#0369A1',skyL:'#E0F2FE',
+  orange:'#EA580C',orangeD:'#9A3412',orangeL:'#FFEDD5',
+  s50:'#F8FAFC',s100:'#F1F5F9',s200:'#E2E8F0',s300:'#CBD5E1',
+  s400:'#94A3B8',s500:'#64748B',s600:'#475569',s700:'#334155',
+  s800:'#1E293B',s900:'#0F172A',white:'#FFFFFF'
 };
 const CHART_COLORS=['#6366f1','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0ea5e9'];
 
 /* ────────── MICRO UI ────────── */
 function Badge({value}){
   const v=(value||'').toUpperCase();
-  const cfg={VERDE:{bg:C.emeraldL,color:C.emeraldD,dot:C.emerald,label:'Verde'},AMARILLO:{bg:C.amberL,color:C.amberD,dot:C.amber,label:'Amarillo'},ROJO:{bg:C.roseL,color:C.roseD,dot:C.rose,label:'Rojo'},NA:{bg:C.s100,color:C.s500,dot:C.s400,label:'N/A'}};
+  const cfg={
+    VERDE:{bg:C.emeraldL,color:C.emeraldD,dot:C.emerald,label:'Óptimo'},
+    AMARILLO:{bg:C.amberL,color:C.amberD,dot:C.amber,label:'Regular'},
+    ROJO:{bg:C.roseL,color:C.roseD,dot:C.rose,label:'Revisar'},
+    NA:{bg:C.s100,color:C.s500,dot:C.s300,label:'N/A'}
+  };
   const {bg,color,dot,label}=cfg[v]||cfg.NA;
-  return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',padding:'3px 10px',borderRadius:'999px',background:bg,color,fontSize:'12px',fontWeight:700}}><span style={{width:'7px',height:'7px',borderRadius:'50%',background:dot}}/>{label}</span>;
+  return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',padding:'3px 10px',borderRadius:'99px',background:bg,color,fontSize:'12px',fontWeight:600}}>
+    <span style={{width:'6px',height:'6px',borderRadius:'50%',background:dot,flexShrink:0}}/>
+    {label}
+  </span>;
 }
 function StatusBadge({value}){
-  const colors={Presente:{bg:C.emeraldL,c:C.emeraldD},Tarde:{bg:C.amberL,c:C.amberD},'Media jornada':{bg:C.skyL,c:C.skyD},Ausente:{bg:C.roseL,c:C.roseD},Franco:{bg:C.s100,c:C.s500},Licencia:{bg:C.violetL,c:C.violetD},Vacaciones:{bg:C.orangeL,c:C.orangeD}};
-  const {bg,c}=colors[value]||{bg:C.s100,c:C.s500};
-  return <span style={{padding:'2px 9px',borderRadius:'999px',background:bg,color:c,fontSize:'11px',fontWeight:700}}>{value||'—'}</span>;
+  const m={
+    Presente:{bg:C.emeraldL,c:C.emeraldD},
+    Tarde:{bg:C.amberL,c:C.amberD},
+    'Media jornada':{bg:C.skyL,c:C.skyD},
+    Ausente:{bg:C.roseL,c:C.roseD},
+    Franco:{bg:C.s100,c:C.s500},
+    Licencia:{bg:C.violetL,c:C.violetD},
+    Vacaciones:{bg:C.orangeL,c:C.orangeD}
+  };
+  const {bg,c}=m[value]||{bg:C.s100,c:C.s500};
+  return <span style={{padding:'2px 10px',borderRadius:'99px',background:bg,color:c,fontSize:'12px',fontWeight:600}}>{value||'—'}</span>;
 }
 function KPI({label,value,bg,color,icon,sub}){
-  return <div style={{borderRadius:'12px',padding:'1rem 1.1rem',background:bg||C.white,border:`1px solid ${C.s200}`,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}><span style={{fontSize:'11px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.07em',lineHeight:1.3}}>{label}</span>{icon&&<span style={{fontSize:'16px'}}>{icon}</span>}</div>
-    <div style={{fontSize:'26px',fontWeight:800,color:color||C.s800,fontVariantNumeric:'tabular-nums',lineHeight:1}}>{value}</div>
-    {sub&&<div style={{fontSize:'11px',color:C.s400,marginTop:'4px'}}>{sub}</div>}
+  return <div style={{borderRadius:'10px',padding:'16px',background:bg||C.white,border:`1px solid ${C.s200}`,boxShadow:'0 1px 3px rgba(0,0,0,.04)'}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+      <span style={{fontSize:'11px',fontWeight:600,color:C.s500,textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</span>
+      {icon&&<span style={{fontSize:'15px'}}>{icon}</span>}
+    </div>
+    <div style={{fontSize:'28px',fontWeight:700,color:color||C.s800,fontVariantNumeric:'tabular-nums',lineHeight:1,letterSpacing:'-0.02em'}}>{value}</div>
+    {sub&&<div style={{fontSize:'11px',color:C.s400,marginTop:'5px'}}>{sub}</div>}
   </div>;
 }
 function DataTable({headers,rows,searchQ=''}){
-  function hl(text){if(!searchQ||text===null||text===undefined)return text;const s=String(text);const idx=s.toLowerCase().indexOf(searchQ.toLowerCase());if(idx<0)return s;return <>{s.slice(0,idx)}<mark>{s.slice(idx,idx+searchQ.length)}</mark>{s.slice(idx+searchQ.length)}</>;}
-  return <div style={{overflowX:'auto',borderRadius:'10px',border:`1px solid ${C.s200}`}}>
+  function hl(text){
+    if(!searchQ||text===null||text===undefined)return text;
+    const s=String(text);const idx=s.toLowerCase().indexOf(searchQ.toLowerCase());
+    if(idx<0)return s;
+    return <>{s.slice(0,idx)}<mark>{s.slice(idx,idx+searchQ.length)}</mark>{s.slice(idx+searchQ.length)}</>;
+  }
+  return <div style={{overflowX:'auto',borderRadius:'8px',border:`1px solid ${C.s200}`}}>
     <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
-      <thead><tr style={{background:C.s50,borderBottom:`2px solid ${C.s200}`}}>{headers.map((h,i)=><th key={i} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:C.s500,whiteSpace:'nowrap',fontSize:'12px',letterSpacing:'0.03em',textTransform:'uppercase'}}>{h}</th>)}</tr></thead>
-      <tbody>{rows.length===0?<tr><td colSpan={headers.length} style={{padding:'32px',textAlign:'center',color:C.s400,fontSize:'13px'}}>Sin datos para mostrar</td></tr>:rows.map((row,ri)=><tr key={ri} className='row-hover' style={{borderBottom:`1px solid ${C.s100}`,background:C.white}}>{row.map((cell,ci)=><td key={ci} style={{padding:'11px 14px',color:C.s700,whiteSpace:'nowrap'}}>{typeof cell==='string'?hl(cell):cell}</td>)}</tr>)}</tbody>
+      <thead>
+        <tr style={{background:C.s50,borderBottom:`1px solid ${C.s200}`}}>
+          {headers.map((h,i)=><th key={i} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:C.s500,whiteSpace:'nowrap',fontSize:'11px',letterSpacing:'0.05em',textTransform:'uppercase'}}>{h}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length===0
+          ? <tr><td colSpan={headers.length} style={{padding:'32px',textAlign:'center',color:C.s400,fontSize:'13px'}}>Sin datos para mostrar</td></tr>
+          : rows.map((row,ri)=><tr key={ri} className='row-hover' style={{borderBottom:`1px solid ${C.s100}`,background:C.white}}>
+              {row.map((cell,ci)=><td key={ci} style={{padding:'11px 14px',color:C.s700,whiteSpace:'nowrap'}}>{typeof cell==='string'?hl(cell):cell}</td>)}
+            </tr>)}
+      </tbody>
     </table>
   </div>;
 }
-function Field({label,children}){return <label style={{display:'flex',flexDirection:'column'}}><span style={{fontSize:'11px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.07em',display:'block',marginBottom:'5px'}}>{label}</span>{children}</label>;}
-function Inp(props){return <input {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}/>;}
-function DateInp({value,onChange,min,max,...props}){return <Inp {...props} type='date' value={toInputDate(value)} min={min?toInputDate(min):undefined} max={max?toInputDate(max):undefined} onChange={e=>onChange&&onChange({target:{value:fromInputDate(e.target.value,value)}})}/>;}
-function Txt(props){return <textarea {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',minHeight:'84px',resize:'vertical',...(props.style||{})}}/>;}
-function Sel({children,...props}){return <select {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}>{children}</select>;}
-function BtnP({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'8px',border:'none',background:C.blue,color:C.white,fontSize:'13px',fontWeight:600,cursor:'pointer',boxShadow:'0 1px 3px rgba(37,99,235,.25)',display:'flex',alignItems:'center',gap:'7px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
-function BtnN({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.white,color:C.s700,fontSize:'13px',fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
-function BtnD({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.rose}`,background:'transparent',color:C.rose,fontSize:'12px',fontWeight:700,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
-function BtnS({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.s200}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:600,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
-function SecH({title,subtitle,right}){return <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:'12px',marginBottom:'20px'}}><div><div style={{fontSize:'18px',fontWeight:800,color:C.s800,letterSpacing:'-0.02em'}}>{title}</div>{subtitle&&<div style={{fontSize:'13px',color:C.s500,marginTop:'3px'}}>{subtitle}</div>}</div>{right&&<div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>{right}</div>}</div>;}
-function Card({children,style={}}){return <div style={{background:C.white,borderRadius:'12px',border:`1px solid ${C.s200}`,padding:'1.25rem',boxShadow:'0 1px 3px rgba(0,0,0,.04)',...style}}>{children}</div>;}
-function CardTitle({children,color}){return <div style={{fontSize:'12px',fontWeight:700,color:color||C.s500,marginBottom:'14px',paddingBottom:'10px',borderBottom:`1px solid ${C.s200}`,textTransform:'uppercase',letterSpacing:'0.06em'}}>{children}</div>;}
-function SLabel({children}){return <div style={{fontSize:'12px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'10px'}}>{children}</div>;}
+function Field({label,children}){
+  return <label style={{display:'flex',flexDirection:'column'}}>
+    <span style={{fontSize:'12px',fontWeight:600,color:C.s600,display:'block',marginBottom:'6px'}}>{label}</span>
+    {children}
+  </label>;
+}
+function Inp(props){
+  return <input {...props} style={{width:'100%',padding:'8px 12px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}/>;
+}
+function DateInp({value,onChange,min,max,...props}){
+  return <Inp {...props} type='date' value={toInputDate(value)} min={min?toInputDate(min):undefined} max={max?toInputDate(max):undefined} onChange={e=>onChange&&onChange({target:{value:fromInputDate(e.target.value,value)}})}/>;
+}
+function Txt(props){
+  return <textarea {...props} style={{width:'100%',padding:'8px 12px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',minHeight:'84px',resize:'vertical',...(props.style||{})}}/>;
+}
+function Sel({children,...props}){
+  return <select {...props} style={{width:'100%',padding:'8px 12px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}>{children}</select>;
+}
+function BtnP({children,...props}){
+  return <button {...props} style={{padding:'8px 16px',borderRadius:'8px',border:'none',background:C.blue,color:C.white,fontSize:'13px',fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'6px',whiteSpace:'nowrap',boxShadow:'0 1px 3px rgba(37,99,235,.3)',...(props.style||{})}}>{children}</button>;
+}
+function BtnN({children,...props}){
+  return <button {...props} style={{padding:'8px 16px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.white,color:C.s700,fontSize:'13px',fontWeight:500,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'6px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;
+}
+function BtnD({children,...props}){
+  return <button {...props} style={{padding:'5px 12px',borderRadius:'6px',border:`1px solid ${C.roseL}`,background:C.roseL,color:C.rose,fontSize:'12px',fontWeight:600,cursor:'pointer',...(props.style||{})}}>{children}</button>;
+}
+function BtnS({children,...props}){
+  return <button {...props} style={{padding:'5px 12px',borderRadius:'6px',border:`1px solid ${C.s200}`,background:C.white,color:C.s600,fontSize:'12px',fontWeight:500,cursor:'pointer',...(props.style||{})}}>{children}</button>;
+}
+function SecH({title,subtitle,right}){
+  return <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:'12px',marginBottom:'24px'}}>
+    <div>
+      <h2 style={{fontSize:'18px',fontWeight:700,color:C.s800,letterSpacing:'-0.02em',lineHeight:1.2}}>{title}</h2>
+      {subtitle&&<p style={{fontSize:'13px',color:C.s500,marginTop:'4px',fontWeight:400}}>{subtitle}</p>}
+    </div>
+    {right&&<div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>{right}</div>}
+  </div>;
+}
+function Card({children,style={}}){
+  return <div style={{background:C.white,borderRadius:'12px',border:`1px solid ${C.s200}`,padding:'20px',boxShadow:'0 1px 3px rgba(0,0,0,.04)',...style}}>{children}</div>;
+}
+function CardTitle({children,color}){
+  return <div style={{fontSize:'12px',fontWeight:600,color:color||C.s400,marginBottom:'16px',paddingBottom:'12px',borderBottom:`1px solid ${C.s100}`,textTransform:'uppercase',letterSpacing:'0.07em'}}>{children}</div>;
+}
+function SLabel({children}){
+  return <div style={{fontSize:'11px',fontWeight:600,color:C.s400,textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:'10px'}}>{children}</div>;
+}
 
 /* ────────── CHARTS ────────── */
 function normalizeChartNumber(v){
@@ -1650,55 +1747,89 @@ function App(){
     {showDailyImport&&<ImportDailyModal onClose={()=>setShowDailyImport(false)} onImport={rows=>{importProduction(rows);setShowDailyImport(false);}} employees={activeEmployees}/>}
 
     {/* Mobile overlay */}
-    {isMobile&&sidebarOpen&&<div onClick={()=>setSidebarOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:98}}/>}
+    {isMobile&&sidebarOpen&&<div onClick={()=>setSidebarOpen(false)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.4)',zIndex:98,backdropFilter:'blur(2px)'}}/>}
 
-    {/* Sidebar */}
-    <aside style={{width:isMobile?(sidebarOpen?'220px':'0'):'220px',flexShrink:0,background:C.s800,display:'flex',flexDirection:'column',position:isMobile?'fixed':'relative',height:'100vh',zIndex:isMobile?99:'auto',overflow:'hidden',transition:'width .2s ease',top:0,left:0}}>
+    {/* ── Sidebar ── */}
+    <aside style={{
+      width:isMobile?(sidebarOpen?'240px':'0'):'240px',
+      flexShrink:0,
+      background:C.white,
+      borderRight:`1px solid ${C.s200}`,
+      display:'flex',flexDirection:'column',
+      position:isMobile?'fixed':'relative',
+      height:'100vh',zIndex:isMobile?99:'auto',
+      overflow:'hidden',transition:'width .2s ease',
+      top:0,left:0,
+      boxShadow:isMobile&&sidebarOpen?'4px 0 24px rgba(0,0,0,.12)':'none'
+    }}>
       {/* Logo */}
-      <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(255,255,255,.08)',flexShrink:0}}>
+      <div style={{padding:'20px 16px 16px',borderBottom:`1px solid ${C.s100}`,flexShrink:0}}>
         <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-          <div style={{width:'36px',height:'36px',borderRadius:'9px',background:C.blue,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',flexShrink:0}}>🏭</div>
+          <div style={{width:'36px',height:'36px',borderRadius:'9px',background:C.blue,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:0,boxShadow:'0 2px 8px rgba(37,99,235,.35)'}}>🏭</div>
           <div style={{overflow:'hidden',whiteSpace:'nowrap'}}>
-            <div style={{color:C.white,fontWeight:800,fontSize:'14px',lineHeight:1.2}}>Control Planta</div>
-            <div style={{color:'rgba(255,255,255,.4)',fontWeight:400,fontSize:'11px',marginTop:'2px'}}>Panel de gestión</div>
+            <div style={{color:C.s800,fontWeight:700,fontSize:'14px',lineHeight:1.2,letterSpacing:'-0.01em'}}>Sistema de Planta</div>
+            <div style={{color:C.s400,fontWeight:400,fontSize:'11px',marginTop:'2px'}}>Panel de gestión</div>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav style={{flex:1,padding:'10px 8px',display:'flex',flexDirection:'column',gap:'2px',overflowY:'auto'}}>
-        {TABS.map(t=><button key={t.id} className={`sidebar-nav-btn${tab===t.id?' active':''}`} onClick={()=>{setTab(t.id);if(isMobile)setSidebarOpen(false);}}>
-          <span style={{fontSize:'15px',flexShrink:0}}>{t.icon}</span>
-          <span style={{overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{t.label}</span>
-          {tab===t.id&&<span style={{marginLeft:'auto',width:'4px',height:'4px',borderRadius:'50%',background:C.white}}/>}
-        </button>)}
+      <nav style={{flex:1,padding:'8px 8px',display:'flex',flexDirection:'column',gap:'1px',overflowY:'auto'}}>
+        {TABS.map(t=>(
+          <button key={t.id} className={`snav${tab===t.id?' active':''}`} onClick={()=>{setTab(t.id);if(isMobile)setSidebarOpen(false);}}>
+            <span style={{fontSize:'14px',flexShrink:0,width:'18px',textAlign:'center'}}>{t.icon}</span>
+            <span style={{overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flex:1}}>{t.label}</span>
+            <span className='snav-dot'/>
+          </button>
+        ))}
       </nav>
 
       {/* Bottom actions */}
-      <div style={{padding:'12px',borderTop:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',gap:'6px',flexShrink:0}}>
-        <button onClick={()=>fullReportInputRef.current?.click()} style={{width:'100%',padding:'8px 10px',borderRadius:'8px',border:'1px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.8)',fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left'}}>📘 Leer Excel</button>
-        <button onClick={exportFullWorkbook} style={{width:'100%',padding:'8px 10px',borderRadius:'8px',border:'1px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.8)',fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left'}}>⬇ Informe completo</button>
-        <button onClick={clearAll} style={{width:'100%',padding:'8px 10px',borderRadius:'8px',border:'1px solid rgba(244,63,94,.3)',background:'transparent',color:'rgba(244,63,94,.7)',fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left'}}>✕ Vaciar datos</button>
+      <div style={{padding:'12px',borderTop:`1px solid ${C.s100}`,display:'flex',flexDirection:'column',gap:'4px',flexShrink:0}}>
+        <button onClick={()=>fullReportInputRef.current?.click()} style={{width:'100%',padding:'8px 10px',borderRadius:'7px',border:`1px solid ${C.s200}`,background:C.s50,color:C.s600,fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:'6px'}}>
+          <span>📥</span><span>Cargar informe Excel</span>
+        </button>
+        <button onClick={exportFullWorkbook} style={{width:'100%',padding:'8px 10px',borderRadius:'7px',border:`1px solid ${C.s200}`,background:C.s50,color:C.s600,fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:'6px'}}>
+          <span>⬇</span><span>Exportar completo</span>
+        </button>
+        <button onClick={clearAll} style={{width:'100%',padding:'8px 10px',borderRadius:'7px',border:`1px solid ${C.roseL}`,background:'transparent',color:C.rose,fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:'6px'}}>
+          <span>✕</span><span>Vaciar datos</span>
+        </button>
       </div>
     </aside>
 
-    {/* Main area */}
+    {/* ── Main ── */}
     <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden'}}>
 
       {/* Top bar */}
-      <header style={{background:C.white,borderBottom:`1px solid ${C.s200}`,padding:'0 20px',height:'56px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0,boxShadow:'0 1px 3px rgba(0,0,0,.04)'}}>
-        {isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{padding:'6px 10px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:'transparent',cursor:'pointer',fontSize:'16px',color:C.s600}}>☰</button>}
-        <div style={{fontWeight:700,color:C.s800,fontSize:'15px',flexShrink:0}}>{TABS.find(t=>t.id===tab)?.label||'Dashboard'}</div>
-        <div style={{flex:1}}/>
-        <div style={{position:'relative',width:isMobile?'100%':'280px'}}>
-          <span style={{position:'absolute',left:'10px',top:'50%',transform:'translateY(-50%)',color:C.s400,fontSize:'14px'}}>🔍</span>
-          <input value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)} placeholder='Buscar...' style={{width:'100%',padding:'7px 11px 7px 32px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.s50,color:C.s800,fontSize:'13px',boxSizing:'border-box'}}/>
-          {globalSearch&&<button onClick={()=>setGlobalSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:C.s400,cursor:'pointer',fontSize:'14px'}}>×</button>}
+      <header style={{background:C.white,borderBottom:`1px solid ${C.s200}`,padding:'0 24px',height:'60px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0}}>
+        {isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{padding:'7px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:'transparent',cursor:'pointer',fontSize:'16px',color:C.s600,display:'flex',alignItems:'center',justifyContent:'center'}}>☰</button>}
+
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <div style={{fontWeight:600,color:C.s800,fontSize:'14px',lineHeight:1.2}}>
+            {TABS.find(t=>t.id===tab)?.label||'Dashboard'}
+          </div>
+          <div style={{fontSize:'11px',color:C.s400,marginTop:'1px'}}>Panel integral de planta</div>
         </div>
+
+        <div style={{flex:1}}/>
+
+        {/* Search */}
+        <div style={{position:'relative',width:isMobile?'100%':'260px'}}>
+          <span style={{position:'absolute',left:'10px',top:'50%',transform:'translateY(-50%)',color:C.s400,fontSize:'13px',pointerEvents:'none'}}>🔍</span>
+          <input
+            value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)}
+            placeholder='Buscar empleado, fecha...'
+            style={{width:'100%',padding:'7px 32px 7px 32px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.s50,color:C.s800,fontSize:'13px',boxSizing:'border-box'}}
+          />
+          {globalSearch&&<button onClick={()=>setGlobalSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:C.s400,cursor:'pointer',fontSize:'15px',lineHeight:1}}>×</button>}
+        </div>
+
         <input ref={fullReportInputRef} type='file' accept='.xlsx,.xls' style={{display:'none'}} onChange={e=>importFullWorkbookFile(e.target.files?.[0])}/>
+
         {!isMobile&&<>
-          <BtnP onClick={()=>setShowEmpImport(true)} style={{padding:'7px 14px'}}>📥 Empleados</BtnP>
-          <button onClick={()=>exportCsv('base_general.csv',['Fecha','Semana','Legajo','Nombre','Sector','Turno','Tipo','Estado','Entrada','Salida','Horas','Producción','Meta','% Cumpl.','Calidad','Puntaje','Semáforo','Observaciones'],records.map(r=>[fmtDate(r.fecha),r.semana,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.entrada,r.salida,r.horas,r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.puntajeFinal,r.semaforo,r.observaciones]))} style={{padding:'7px 12px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:600,cursor:'pointer'}}>⬇ CSV</button>
+          <BtnP onClick={()=>setShowEmpImport(true)} style={{padding:'7px 14px',fontSize:'12px'}}>+ Empleados</BtnP>
+          <button onClick={()=>exportCsv('base_general.csv',['Fecha','Semana','Legajo','Nombre','Sector','Turno','Tipo','Estado','Entrada','Salida','Horas','Producción','Meta','% Cumpl.','Calidad','Puntaje','Semáforo','Observaciones'],records.map(r=>[fmtDate(r.fecha),r.semana,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.entrada,r.salida,r.horas,r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.puntajeFinal,r.semaforo,r.observaciones]))} style={{padding:'7px 12px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:500,cursor:'pointer'}}>⬇ CSV</button>
         </>}
       </header>
 
