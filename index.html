@@ -4,1681 +4,1113 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel Integral de Planta</title>
-
-  <!-- Librerías externas opcionales. En GitHub Pages cargan correctamente con internet. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
   <style>
-    :root {
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --primary-soft: #eff6ff;
-      --navy: #0f172a;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #e5e7eb;
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --green: #16a34a;
-      --green-soft: #dcfce7;
-      --red: #dc2626;
-      --red-soft: #fee2e2;
-      --amber: #f59e0b;
-      --amber-soft: #fef3c7;
-      --blue-soft: #dbeafe;
-      --purple-soft: #ede9fe;
-      --shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
-      --radius-lg: 24px;
-      --radius-md: 16px;
-      --radius-sm: 10px;
-      --sidebar: 280px;
-      --topbar: 72px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    button,
-    input,
-    select,
-    textarea {
-      font: inherit;
-    }
-
-    button { cursor: pointer; }
-
-    .app-shell {
-      display: grid;
-      grid-template-columns: var(--sidebar) 1fr;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      background: rgba(255,255,255,0.96);
-      border-right: 1px solid var(--border);
-      padding: 22px 18px;
-      z-index: 20;
-      backdrop-filter: blur(14px);
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 8px 8px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .brand-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--primary), #60a5fa);
-      display: grid;
-      place-items: center;
-      color: white;
-      box-shadow: 0 12px 26px rgba(37, 99, 235, .25);
-      font-weight: 800;
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-size: 16px;
-      line-height: 1.2;
-      color: var(--navy);
-      letter-spacing: -0.02em;
-    }
-
-    .brand p {
-      margin: 2px 0 0;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .nav {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .nav-btn {
-      width: 100%;
-      border: 0;
-      background: transparent;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      color: var(--muted);
-      font-weight: 650;
-      text-align: left;
-      transition: .18s ease;
-    }
-
-    .nav-btn:hover {
-      background: #f1f5f9;
-      color: var(--navy);
-    }
-
-    .nav-btn.active {
-      background: var(--primary-soft);
-      color: var(--primary);
-    }
-
-    .nav-ico {
-      width: 22px;
-      height: 22px;
-      display: grid;
-      place-items: center;
-      flex: 0 0 auto;
-    }
-
-    .sidebar-footer {
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .sync-box {
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 14px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .sync-box strong {
-      display: block;
-      color: var(--navy);
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-
-    .main {
-      min-width: 0;
-    }
-
-    .topbar {
-      height: var(--topbar);
-      position: sticky;
-      top: 0;
-      z-index: 15;
-      background: rgba(248,250,252,.86);
-      border-bottom: 1px solid rgba(229,231,235,.7);
-      backdrop-filter: blur(16px);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 28px;
-      gap: 16px;
-    }
-
-    .mobile-menu {
-      display: none;
-      border: 1px solid var(--border);
-      background: white;
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      color: var(--navy);
-    }
-
-    .page-title {
-      min-width: 0;
-    }
-
-    .page-title h2 {
-      margin: 0;
-      color: var(--navy);
-      font-size: 22px;
-      letter-spacing: -0.03em;
-    }
-
-    .page-title p {
-      margin: 2px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .top-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .pill-date {
-      border: 1px solid var(--border);
-      background: white;
-      border-radius: 999px;
-      padding: 9px 14px;
-      color: var(--muted);
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      white-space: nowrap;
-    }
-
-    .content {
-      padding: 28px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    .view { display: none; animation: fadeIn .18s ease; }
-    .view.active { display: block; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .grid { display: grid; gap: 18px; }
-    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .grid-auto { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      padding: 20px;
-      min-width: 0;
-    }
-
-    .card.compact { padding: 16px; border-radius: var(--radius-md); }
-
-    .section-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-
-    .section-head h3 {
-      margin: 0;
-      font-size: 17px;
-      color: var(--navy);
-      letter-spacing: -0.02em;
-    }
-
-    .section-head p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .kpi-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 18px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, .04);
-      min-height: 132px;
-    }
-
-    .kpi-card small {
-      color: var(--muted);
-      display: block;
-      margin-bottom: 10px;
-      font-weight: 700;
-    }
-
-    .kpi-value {
-      font-size: 32px;
-      line-height: 1.05;
-      font-weight: 850;
-      letter-spacing: -0.04em;
-      color: var(--navy);
-    }
-
-    .kpi-unit {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .kpi-icon {
-      width: 44px;
-      height: 44px;
-      display: grid;
-      place-items: center;
-      border-radius: 16px;
-      background: var(--primary-soft);
-      color: var(--primary);
-      flex: 0 0 auto;
-    }
-
-    .green { color: var(--green) !important; }
-    .red { color: var(--red) !important; }
-    .amber { color: var(--amber) !important; }
-    .blue { color: var(--primary) !important; }
-    .muted { color: var(--muted) !important; }
-
-    .btn {
-      border: 1px solid transparent;
-      min-height: 42px;
-      border-radius: 13px;
-      padding: 10px 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-weight: 750;
-      transition: .18s ease;
-      white-space: nowrap;
-      text-decoration: none;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      box-shadow: 0 12px 24px rgba(37, 99, 235, .22);
-    }
-
-    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
-
-    .btn-secondary {
-      background: white;
-      color: var(--text);
-      border-color: var(--border);
-    }
-
-    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
-
-    .btn-danger {
-      background: var(--red-soft);
-      color: var(--red);
-    }
-
-    .btn-ghost {
-      background: transparent;
-      color: var(--muted);
-      border-color: transparent;
-    }
-
-    .btn-sm { min-height: 34px; padding: 7px 10px; border-radius: 10px; font-size: 13px; }
-
-    .field {
-      display: grid;
-      gap: 7px;
-      min-width: 0;
-    }
-
-    .field label {
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 750;
-    }
-
-    .field input,
-    .field select,
-    .field textarea {
-      width: 100%;
-      min-height: 44px;
-      border: 1px solid #dbe3ee;
-      border-radius: 13px;
-      background: white;
-      padding: 10px 12px;
-      color: var(--text);
-      outline: none;
-      transition: .18s ease;
-    }
-
-    .field textarea {
-      min-height: 130px;
-      resize: vertical;
-      line-height: 1.45;
-    }
-
-    .field input:focus,
-    .field select:focus,
-    .field textarea:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.10);
-    }
-
-    .form-row {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      align-items: end;
-    }
-
-    .table-wrap {
-      width: 100%;
-      overflow: auto;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      background: white;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 760px;
-    }
-
-    th, td {
-      padding: 14px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-      font-size: 14px;
-    }
-
-    th {
-      font-size: 12px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      background: #f8fafc;
-      font-weight: 850;
-    }
-
-    tr:last-child td { border-bottom: 0; }
-    tbody tr:hover td { background: #fbfdff; }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 800;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    .badge.green { background: var(--green-soft); color: #15803d !important; }
-    .badge.red { background: var(--red-soft); color: #b91c1c !important; }
-    .badge.amber { background: var(--amber-soft); color: #b45309 !important; }
-    .badge.blue { background: var(--blue-soft); color: #1d4ed8 !important; }
-    .badge.gray { background: #f1f5f9; color: #475569 !important; }
-    .badge.purple { background: var(--purple-soft); color: #6d28d9 !important; }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-      background: #cbd5e1;
-    }
-    .dot-green { background: var(--green); }
-    .dot-amber { background: var(--amber); }
-    .dot-red { background: var(--red); }
-    .dot-gray { background: #cbd5e1; }
-
-    .chart-box {
-      position: relative;
-      min-height: 310px;
-    }
-
-    .chart-box canvas { width: 100% !important; height: 280px !important; }
-
-    .empty {
-      border: 1px dashed #cbd5e1;
-      border-radius: 18px;
-      padding: 24px;
-      text-align: center;
-      color: var(--muted);
-      background: #f8fafc;
-    }
-
-    .tabs-tools {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .import-card {
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: white;
-    }
-
-    .import-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      background: var(--primary-soft);
-      color: var(--primary);
-      flex: 0 0 auto;
-    }
-
-    .import-card h4 { margin: 0; color: var(--navy); }
-    .import-card p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
-
-    .quick-links {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 14px;
-      margin-top: 18px;
-    }
-
-    .info-tile {
-      border: 1px solid var(--border);
-      background: white;
-      border-radius: 20px;
-      padding: 18px;
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-    }
-
-    .info-tile .circle {
-      width: 48px;
-      height: 48px;
-      border-radius: 16px;
-      background: var(--primary-soft);
-      color: var(--primary);
-      display: grid;
-      place-items: center;
-      flex: 0 0 auto;
-    }
-
-    .info-tile h4 { margin: 0; color: var(--navy); }
-    .info-tile p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
-
-    .employee-card {
-      display: grid;
-      gap: 16px;
-    }
-
-    .person-head {
-      display: flex;
-      gap: 14px;
-      align-items: center;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .avatar {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: grid;
-      place-items: center;
-      font-weight: 850;
-      letter-spacing: -.02em;
-      flex: 0 0 auto;
-    }
-
-    .person-head h4 { margin: 0; color: var(--navy); }
-    .person-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 8px 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .detail-row strong { color: var(--text); font-weight: 750; text-align: right; }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15,23,42,.42);
-      backdrop-filter: blur(6px);
-      display: none;
-      place-items: center;
-      z-index: 100;
-      padding: 18px;
-    }
-    .modal-backdrop.active { display: grid; }
-
-    .modal {
-      width: min(680px, 100%);
-      max-height: 90vh;
-      overflow: auto;
-      background: white;
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      box-shadow: 0 28px 80px rgba(15,23,42,.25);
-      padding: 22px;
-    }
-
-    .modal-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 18px;
-    }
-    .modal-head h3 { margin: 0; color: var(--navy); }
-    .modal-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-
-    .toast-wrap {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      z-index: 120;
-      display: grid;
-      gap: 10px;
-    }
-
-    .toast {
-      background: var(--navy);
-      color: white;
-      border-radius: 16px;
-      padding: 12px 14px;
-      box-shadow: 0 18px 50px rgba(15,23,42,.28);
-      min-width: 240px;
-      animation: toastIn .2s ease;
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-    .split {
-      display: grid;
-      grid-template-columns: 1.7fr .9fr;
-      gap: 18px;
-      align-items: start;
-    }
-
-    .actions-cell {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .icon-btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: white;
-      display: inline-grid;
-      place-items: center;
-      color: var(--muted);
-    }
-
-    .icon-btn:hover { color: var(--primary); border-color: #bfdbfe; background: #eff6ff; }
-
-    .note {
-      border: 1px solid #bfdbfe;
-      background: #eff6ff;
-      color: #1e40af;
-      padding: 13px 15px;
-      border-radius: 16px;
-      font-size: 13px;
-      line-height: 1.45;
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .settings-block {
-      display: grid;
-      gap: 16px;
-    }
-
-    .footer-safe {
-      padding-bottom: 10px;
-    }
-
-    @media (max-width: 1180px) {
-      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .split { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 880px) {
-      :root { --sidebar: 0px; --topbar: 68px; }
-      .app-shell { grid-template-columns: 1fr; }
-      .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        transform: translateX(-105%);
-        transition: .22s ease;
-        width: 310px;
-        max-width: calc(100vw - 34px);
-        box-shadow: 24px 0 80px rgba(15,23,42,.18);
-      }
-      .sidebar.open { transform: translateX(0); }
-      .mobile-menu { display: inline-grid; place-items: center; }
-      .topbar { padding: 0 14px; }
-      .page-title h2 { font-size: 18px; }
-      .page-title p { display: none; }
-      .content { padding: 18px 14px 90px; }
-      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-      .kpi-card { min-height: auto; }
-      .top-actions .pill-date { display: none; }
-      table { min-width: 720px; }
-    }
-
-    @media (max-width: 560px) {
-      .brand h1 { font-size: 15px; }
-      .kpi-value { font-size: 28px; }
-      .section-head { flex-direction: column; }
-      .btn { width: 100%; }
-      .tabs-tools .btn { width: auto; flex: 1; }
-      .form-row { grid-template-columns: 1fr; }
-      .import-card { flex-direction: column; align-items: flex-start; }
-      .toast-wrap { left: 14px; right: 14px; bottom: 14px; }
-      .toast { width: 100%; }
+    :root{
+      --primary:#2563eb;
+      --primary-dark:#1d4ed8;
+      --primary-soft:#eff6ff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#e5e7eb;
+      --line-2:#eef2f7;
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --green:#22c55e;
+      --green-soft:#eaf8ef;
+      --red:#ef4444;
+      --red-soft:#feecec;
+      --orange:#f59e0b;
+      --orange-soft:#fff4db;
+      --blue-soft:#ebf3ff;
+      --shadow:0 18px 50px rgba(15,23,42,.06);
+      --radius-xl:28px;
+      --radius-lg:22px;
+      --radius-md:16px;
+      --radius-sm:12px;
+      --sidebar:252px;
+      --topbar:84px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+    body{min-height:100vh}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .app{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh}
+    .sidebar{position:sticky;top:0;height:100vh;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);border-right:1px solid var(--line);padding:22px 18px;display:flex;flex-direction:column;gap:18px;z-index:20}
+    .brand{display:flex;align-items:center;gap:12px;padding:6px 8px 18px;border-bottom:1px solid var(--line)}
+    .brand-mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--primary),#4f8dfb);display:grid;place-items:center;color:white;font-weight:800;box-shadow:0 10px 24px rgba(37,99,235,.25)}
+    .brand h1{margin:0;font-size:17px;line-height:1.15;letter-spacing:-.03em}
+    .brand p{margin:3px 0 0;color:var(--muted);font-size:12px}
+    .nav{display:grid;gap:6px;overflow:auto;flex:1;padding-right:4px}
+    .nav-btn{display:flex;align-items:center;gap:12px;border:0;background:transparent;color:#334155;padding:12px 14px;border-radius:14px;font-weight:600;text-align:left;transition:.18s}
+    .nav-btn:hover{background:#f8fafc}
+    .nav-btn.active{background:var(--primary-soft);color:var(--primary)}
+    .nav-ico{width:20px;height:20px;display:grid;place-items:center;flex:0 0 auto}
+    .sidebar-foot{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
+    .soft-card{background:#f8fafc;border:1px solid var(--line);border-radius:18px;padding:14px}
+    .soft-card strong{display:block;font-size:13px;margin-bottom:4px}
+    .main{min-width:0}
+    .topbar{position:sticky;top:0;height:var(--topbar);background:rgba(248,250,252,.88);backdrop-filter:blur(16px);border-bottom:1px solid rgba(229,231,235,.8);display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:15;gap:16px}
+    .top-left{display:flex;align-items:center;gap:14px;min-width:0}
+    .menu-toggle{display:none;width:46px;height:46px;border-radius:14px;background:white;border:1px solid var(--line)}
+    .page-head h2{margin:0;font-size:28px;letter-spacing:-.04em}
+    .page-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .top-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+    .ghost-btn,.primary-btn,.outline-btn{height:46px;padding:0 16px;border-radius:14px;border:1px solid var(--line);background:white;color:var(--text);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+    .primary-btn{background:linear-gradient(135deg,var(--primary),#3d7af6);border-color:transparent;color:white;box-shadow:0 12px 25px rgba(37,99,235,.18)}
+    .outline-btn{background:transparent}
+    .shell{padding:30px 28px 40px;max-width:1600px}
+    .page{display:none}
+    .page.active{display:block}
+    .page-title-block{margin-bottom:22px}
+    .page-title-block h3{margin:0;font-size:34px;letter-spacing:-.05em}
+    .page-title-block p{margin:8px 0 0;color:var(--muted);font-size:16px}
+    .dashboard-grid{display:grid;grid-template-columns:1fr;gap:24px}
+    .app-card{background:var(--card);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow)}
+    .dashboard-card{padding:0;overflow:hidden}
+    .dashboard-layout{display:grid;grid-template-columns:240px 1fr}
+    .mini-sidebar{border-right:1px solid var(--line);padding:22px}
+    .mini-brand{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-weight:700;color:#1e3a8a}
+    .mini-nav{display:grid;gap:8px;margin-top:18px}
+    .mini-nav-item{padding:12px 14px;border-radius:14px;color:#334155;display:flex;align-items:center;gap:10px;font-weight:600}
+    .mini-nav-item.active{background:var(--primary-soft);color:var(--primary)}
+    .dashboard-main{padding:18px 28px 22px}
+    .dashboard-topline{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+    .icon-actions{display:flex;align-items:center;gap:14px;color:#475569}
+    .avatar-chip{display:flex;align-items:center;gap:10px;color:#334155;font-weight:600}
+    .avatar{width:36px;height:36px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-weight:700}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:24px 0 20px}
+    .kpi-card{border:1px solid var(--line);border-radius:20px;padding:18px 20px;min-height:120px;display:flex;flex-direction:column;justify-content:center}
+    .kpi-card .label{font-size:15px;font-weight:600;color:#334155;margin-bottom:10px}
+    .kpi-card .value{font-size:28px;font-weight:700;letter-spacing:-.04em;line-height:1}
+    .kpi-card .sub{margin-top:8px;font-size:13px;color:var(--muted)}
+    .green{color:var(--green)} .red{color:var(--red)} .blue{color:var(--primary)}
+    .chart-row{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+    .chart-card{border:1px solid var(--line);border-radius:20px;padding:18px}
+    .chart-title{font-weight:700;font-size:15px;margin-bottom:14px}
+    .summary-strip{margin-top:18px;border:1px solid var(--line);border-radius:20px;padding:18px;display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center}
+    .ranking-list{display:grid;gap:16px}
+    .ranking-item{display:grid;grid-template-columns:24px 1fr auto 76px;align-items:center;gap:12px;font-size:14px}
+    .bar{height:6px;border-radius:999px;background:#e8eef9;overflow:hidden}
+    .bar > span{display:block;height:100%;background:var(--primary);border-radius:999px}
+    .inline-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .inline-metric{display:flex;flex-direction:column;gap:8px;padding-left:18px;border-left:1px solid var(--line)}
+    .inline-metric:first-child{border-left:0;padding-left:0}
+    .metric-label{font-size:14px;font-weight:600;color:#334155}
+    .metric-big{font-size:17px;font-weight:700}
+    .metric-delta{font-size:14px;color:var(--green)}
+    .foot-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+    .section-grid{display:grid;gap:22px}
+    .content-card{background:var(--card);border:1px solid var(--line);border-radius:28px;padding:28px;box-shadow:var(--shadow)}
+    .content-card h4{margin:0 0 20px;font-size:20px;letter-spacing:-.03em}
+    .muted{color:var(--muted)}
+    .form-row{display:grid;gap:16px;grid-template-columns:repeat(5,1fr);align-items:end}
+    .field{display:grid;gap:8px}
+    .field label{font-size:14px;font-weight:600;color:#334155}
+    .input, select, textarea{
+      width:100%;height:50px;border:1px solid #dbe3ef;border-radius:14px;padding:0 14px;background:white;color:var(--text);
+    }
+    textarea.input{min-height:140px;height:auto;padding:14px;resize:vertical}
+    .import-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+    .import-card{border:1px solid var(--line);border-radius:22px;padding:24px;min-height:190px;display:grid;align-content:start;gap:16px}
+    .import-head{display:flex;align-items:center;gap:16px}
+    .import-icon{width:58px;height:58px;border-radius:16px;background:#f8fafc;display:grid;place-items:center;font-size:30px}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:20px}
+    table{width:100%;border-collapse:collapse;background:white}
+    th,td{padding:16px 18px;text-align:left;border-bottom:1px solid var(--line-2);font-size:14px;vertical-align:middle}
+    th{font-size:14px;color:#334155;background:#fbfdff;font-weight:700}
+    tr:last-child td{border-bottom:0}
+    .badge{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:12px;font-size:14px;font-weight:600;line-height:1.1}
+    .badge.success{background:var(--green-soft);color:#24a148}
+    .badge.danger{background:var(--red-soft);color:var(--red)}
+    .badge.warning{background:var(--orange-soft);color:var(--orange)}
+    .badge.info{background:var(--blue-soft);color:var(--primary)}
+    .badge.soft{background:#f1f5f9;color:#475569}
+    .actions-cell{display:flex;gap:10px;align-items:center}
+    .tiny-btn{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:white;color:#1e40af;display:grid;place-items:center}
+    .block-divider{height:1px;background:var(--line);margin:26px 0}
+    .center-actions{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:22px}
+    .helper-note{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px;margin-top:16px}
+    .filter-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:end}
+    .present-summary{margin-top:22px;border:1px solid var(--line);border-radius:20px;padding:22px;display:grid;grid-template-columns:220px 1fr 1fr 1fr 1fr;gap:10px;align-items:center}
+    .present-summary .title{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px}
+    .summary-count{padding:0 22px;border-left:1px solid var(--line)}
+    .summary-count:first-of-type{border-left:0}
+    .summary-count .n{font-size:46px;font-weight:700;line-height:1;letter-spacing:-.04em}
+    .tracking-layout{display:grid;grid-template-columns:1.35fr .55fr;gap:18px}
+    .week-switch{display:flex;align-items:center;gap:0;margin-bottom:20px}
+    .week-switch button,.week-switch .range{height:48px;border:1px solid var(--line);background:white;padding:0 18px;font-weight:600;color:#334155}
+    .week-switch button:first-child{border-radius:14px 0 0 14px}
+    .week-switch .range{display:flex;align-items:center;border-left:0;border-right:0;min-width:240px;justify-content:center}
+    .week-switch button:last-child{border-radius:0 14px 14px 0}
+    .tracking-card{padding:20px}
+    .employee-panel{border:1px solid var(--line);border-radius:20px;padding:26px;display:grid;gap:18px;align-content:start}
+    .employee-head{display:flex;align-items:center;gap:18px}
+    .avatar-lg{width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#1d4ed8);display:grid;place-items:center;color:white;font-size:24px;font-weight:700}
+    .info-list{display:grid;gap:18px;padding-top:12px;border-top:1px solid var(--line)}
+    .info-row{display:grid;grid-template-columns:24px 1fr auto;gap:16px;align-items:center;color:#475569}
+    .info-row strong{color:#334155;font-weight:600}
+    .history-actions{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:18px}
+    .salt-layout{display:grid;gap:18px}
+    .salt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+    .salt-main{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px}
+    .tab-actions{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+    .tab-actions .ghost-btn,.tab-actions .primary-btn{min-width:170px}
+    .link-line{display:flex;justify-content:center;margin-top:18px}
+    .link-line a{color:var(--primary);text-decoration:none;font-weight:700}
+    .info-banner{margin-top:18px;border:1px solid var(--line);border-radius:18px;padding:18px 22px;background:#fbfdff;color:#475569}
+    .employees-table .badge{min-width:94px}
+    .small{font-size:12px;color:var(--muted)}
+    .mobile-sheet{display:none}
+    .desktop-only{display:initial}
+
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+    .modal-backdrop.show{display:flex}
+    .modal{max-width:620px;width:100%;background:white;border-radius:24px;border:1px solid var(--line);box-shadow:0 30px 80px rgba(15,23,42,.22);padding:24px}
+    .modal h4{margin:0 0 18px;font-size:22px}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+    @media (max-width: 1200px){
+      .kpi-row,.salt-kpis{grid-template-columns:repeat(2,1fr)}
+      .chart-row,.tracking-layout,.salt-main{grid-template-columns:1fr}
+      .summary-strip{grid-template-columns:1fr}
+      .inline-metrics{grid-template-columns:1fr}
+      .import-grid{grid-template-columns:1fr}
+      .form-row,.filter-row{grid-template-columns:repeat(2,1fr)}
+      .present-summary{grid-template-columns:1fr 1fr;gap:18px}
+      .present-summary .title{grid-column:1/-1}
+      .summary-count{border-left:0;border-top:1px solid var(--line);padding:16px 0 0}
+      .dashboard-layout{grid-template-columns:1fr}
+      .mini-sidebar{display:none}
+    }
+    @media (max-width: 960px){
+      .app{grid-template-columns:1fr}
+      .sidebar{position:fixed;left:-100%;top:0;width:var(--sidebar);transition:.22s ease}
+      .sidebar.show{left:0}
+      .menu-toggle{display:grid;place-items:center}
+      .topbar{padding:0 18px}
+      .shell{padding:22px 16px 34px}
+      .page-head h2{font-size:23px}
+      .top-actions{display:none}
+      .mobile-sheet{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+    }
+    @media (max-width: 720px){
+      .form-row,.filter-row,.kpi-row,.salt-kpis{grid-template-columns:1fr}
+      .content-card,.dashboard-main,.tracking-card{padding:18px}
+      th,td{padding:12px}
+      .present-summary{grid-template-columns:1fr}
+      .page-title-block h3{font-size:28px}
     }
   </style>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <div class="brand-icon">PI</div>
+        <div class="brand-mark">PI</div>
         <div>
           <h1>Panel Integral<br>de Planta</h1>
-          <p>Producción · Personal · Sal</p>
+          <p>Gestión operativa minimalista</p>
         </div>
       </div>
 
-      <nav class="nav" id="nav">
-        <button class="nav-btn active" data-view="dashboard"><span class="nav-ico">⌂</span>Dashboard</button>
-        <button class="nav-btn" data-view="carga"><span class="nav-ico">＋</span>Carga diaria</button>
-        <button class="nav-btn" data-view="presentismo"><span class="nav-ico">◷</span>Presentismo</button>
-        <button class="nav-btn" data-view="seguimiento"><span class="nav-ico">◎</span>Seguimiento</button>
-        <button class="nav-btn" data-view="historial"><span class="nav-ico">☷</span>Historial</button>
-        <button class="nav-btn" data-view="sal"><span class="nav-ico">▱</span>Sal</button>
-        <button class="nav-btn" data-view="empleados"><span class="nav-ico">♙</span>Empleados</button>
-        <button class="nav-btn" data-view="reportes"><span class="nav-ico">▥</span>Reportes</button>
-        <button class="nav-btn" data-view="config"><span class="nav-ico">⚙</span>Configuración</button>
-      </nav>
+      <nav class="nav" id="mainNav"></nav>
 
-      <div class="sidebar-footer">
-        <div class="sync-box">
-          <strong>Base local activa</strong>
-          Los datos se guardan en este navegador. Usá Exportar / Backup para respaldo.
+      <div class="sidebar-foot">
+        <div class="soft-card">
+          <strong>Diseño aplicado</strong>
+          Vista basada en el PDF y en las ilustraciones aprobadas.
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="exportAllData()">⬇ Exportar backup</button>
+        <div class="soft-card">
+          <strong>Datos guardados</strong>
+          Todo se almacena en tu navegador mediante localStorage.
+        </div>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
-        <div class="page-title">
-          <h2 id="currentTitle">Dashboard</h2>
-          <p id="currentSubtitle">Vista principal con indicadores clave</p>
+        <div class="top-left">
+          <button class="menu-toggle" id="menuToggle">☰</button>
+          <div class="page-head">
+            <h2 id="pageTitle">Dashboard</h2>
+            <p id="pageSubtitle">Vista principal con indicadores clave</p>
+          </div>
         </div>
         <div class="top-actions">
-          <div class="pill-date">📅 <span id="todayText"></span></div>
-          <button class="btn btn-secondary btn-sm" onclick="refreshUI()">⟳ Actualizar</button>
-          <button class="btn btn-primary btn-sm" onclick="openQuickAdd()">＋ Cargar</button>
+          <button class="ghost-btn" id="exportBackupBtn">⬇ Exportar backup</button>
+          <label class="ghost-btn" for="importBackupInput">⬆ Importar backup</label>
+          <input id="importBackupInput" type="file" accept="application/json" hidden>
+          <button class="primary-btn" id="saveNowBtn">Guardar ahora</button>
         </div>
       </header>
 
-      <div class="content">
-        <!-- DASHBOARD -->
-        <section class="view active" id="view-dashboard">
-          <div class="grid grid-4" id="dashboardKpis"></div>
+      <div class="shell">
+        <div class="mobile-sheet">
+          <button class="ghost-btn" id="exportBackupBtn2">⬇ Backup</button>
+          <label class="ghost-btn" for="importBackupInput2">⬆ Restaurar</label>
+          <input id="importBackupInput2" type="file" accept="application/json" hidden>
+        </div>
 
-          <div class="grid grid-2" style="margin-top:18px;">
-            <div class="card chart-box">
-              <div class="section-head">
-                <div>
-                  <h3>Producción por día</h3>
-                  <p>Evolución de producción registrada</p>
+        <!-- Dashboard -->
+        <section class="page active" data-page="dashboard">
+          <div class="dashboard-grid">
+            <div class="app-card dashboard-card">
+              <div class="dashboard-layout">
+                <div class="mini-sidebar">
+                  <div class="mini-brand">▮ Sistema de Operaciones</div>
+                  <div class="mini-nav">
+                    <div class="mini-nav-item active">⌂ Dashboard</div>
+                    <div class="mini-nav-item">🗂 Carga diaria</div>
+                    <div class="mini-nav-item">👥 Presentismo</div>
+                    <div class="mini-nav-item">◔ Seguimiento</div>
+                    <div class="mini-nav-item">☰ Historial</div>
+                    <div class="mini-nav-item">🧂 Sal</div>
+                    <div class="mini-nav-item">☷ Empleados</div>
+                    <div class="mini-nav-item">⚙ Configuración</div>
+                  </div>
                 </div>
-              </div>
-              <canvas id="productionChart"></canvas>
-            </div>
-            <div class="card chart-box">
-              <div class="section-head">
                 <div>
-                  <h3>Presentismo</h3>
-                  <p>Relación entre presentes y ausentes</p>
-                </div>
-              </div>
-              <canvas id="attendanceChart"></canvas>
-            </div>
-          </div>
+                  <div class="dashboard-main">
+                    <div class="dashboard-topline">
+                      <div>
+                        <div style="font-size:28px;font-weight:700;letter-spacing:-.04em">Hola, Administrador</div>
+                        <div class="muted" style="margin-top:4px">Resumen del día</div>
+                      </div>
+                      <div class="icon-actions">
+                        <span>🔔</span>
+                        <span>❔</span>
+                        <div class="avatar-chip"><div class="avatar">AD</div>Administrador ▾</div>
+                      </div>
+                    </div>
 
-          <div class="grid grid-2" style="margin-top:18px;">
-            <div class="card">
-              <div class="section-head">
-                <div>
-                  <h3>Ranking de producción</h3>
-                  <p>Empleados con mayor producción acumulada</p>
+                    <div class="kpi-row" id="dashboardKpis"></div>
+
+                    <div class="chart-row">
+                      <div class="chart-card">
+                        <div class="chart-title">Producción por hora (kg)</div>
+                        <canvas id="productionChart" height="170"></canvas>
+                      </div>
+                      <div class="chart-card">
+                        <div class="chart-title">Presentismo</div>
+                        <canvas id="attendanceChart" height="170"></canvas>
+                      </div>
+                    </div>
+
+                    <div class="summary-strip">
+                      <div>
+                        <div class="chart-title">Resumen del día</div>
+                        <div class="ranking-list" id="rankingList"></div>
+                      </div>
+                      <div class="inline-metrics" id="inlineMetrics"></div>
+                    </div>
+                  </div>
+                  <div class="foot-bar">
+                    <div>🕒 Última actualización: <span id="lastUpdateLabel"></span></div>
+                    <button class="outline-btn" id="refreshDashboardBtn">↻ Actualizar datos</button>
+                  </div>
                 </div>
-              </div>
-              <div class="table-wrap"><table id="rankingTable"></table></div>
-            </div>
-            <div class="card">
-              <div class="section-head">
-                <div>
-                  <h3>Lectura rápida</h3>
-                  <p>Resumen operativo del estado actual</p>
-                </div>
-              </div>
-              <div class="quick-links">
-                <div class="info-tile"><div class="circle">↗</div><div><h4>Producción</h4><p>Visualizá qué sector y empleado cargó más producción.</p></div></div>
-                <div class="info-tile"><div class="circle">✓</div><div><h4>Presentismo</h4><p>Detectá ausentes, retrasos y salidas anticipadas.</p></div></div>
-                <div class="info-tile"><div class="circle">▱</div><div><h4>Sal</h4><p>Controlá consumo, stock disponible y movimientos.</p></div></div>
-                <div class="info-tile"><div class="circle">⬇</div><div><h4>Exportación</h4><p>Descargá toda la información como respaldo.</p></div></div>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- CARGA DIARIA -->
-        <section class="view" id="view-carga">
-          <div class="card">
-            <div class="section-head">
-              <div>
-                <h3>Carga manual</h3>
-                <p>Registrá producción y sal usada por fecha, sector y empleado.</p>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field"><label>Fecha</label><input type="date" id="prodDate"></div>
-              <div class="field"><label>Empleado</label><select id="prodEmployee"></select></div>
-              <div class="field"><label>Sector</label><select id="prodSector"></select></div>
-              <div class="field"><label>Producción / unidades</label><input type="number" id="prodQty" placeholder="Ej: 320"></div>
-              <div class="field"><label>Sal usada</label><input type="number" id="prodSalt" placeholder="Ej: 6"></div>
-              <button class="btn btn-primary" onclick="addProduction()">＋ Agregar a la tabla</button>
-            </div>
+        <!-- Carga diaria -->
+        <section class="page" data-page="carga">
+          <div class="page-title-block">
+            <h3>3. Carga diaria</h3>
+            <p>Registro manual e importación de datos</p>
           </div>
+          <div class="content-card">
+            <h4>Carga manual</h4>
+            <div class="form-row">
+              <div class="field"><label>Fecha</label><input id="dailyDate" class="input" type="date"></div>
+              <div class="field"><label>Línea / Sector</label><select id="dailyLine"><option>Línea 1</option><option>Línea 2</option><option>Línea 3</option><option>Línea 4</option><option>Línea 5</option></select></div>
+              <div class="field"><label>Producción (kg)</label><input id="dailyProduction" class="input" type="number" min="0" step="1" placeholder="320000"></div>
+              <div class="field"><label>Sal usada (kg)</label><input id="dailySalt" class="input" type="number" min="0" step="1" placeholder="6200"></div>
+              <button class="primary-btn" id="addDailyRowBtn">＋ Agregar a la tabla</button>
+            </div>
 
-          <div class="grid grid-2" style="margin-top:18px;">
-            <div class="card">
-              <div class="section-head"><div><h3>Importar desde Excel</h3><p>Tomá datos de una planilla .xlsx, .xls o .csv.</p></div></div>
+            <div class="block-divider"></div>
+
+            <h4>Importar datos</h4>
+            <div class="import-grid">
               <div class="import-card">
-                <div class="import-icon">📊</div>
-                <div style="flex:1;">
-                  <h4>Archivo de producción</h4>
-                  <p>Columnas sugeridas: Fecha, Empleado, Sector, Cantidad, Sal.</p>
+                <div class="import-head">
+                  <div class="import-icon">📗</div>
+                  <div>
+                    <div style="font-size:26px;font-weight:700;letter-spacing:-.03em">Importar desde Excel</div>
+                    <div class="muted">Sube un archivo .xlsx o .csv</div>
+                  </div>
                 </div>
-                <label class="btn btn-secondary">
-                  Seleccionar archivo
-                  <input hidden type="file" accept=".xlsx,.xls,.csv" onchange="importProductionFile(event)">
-                </label>
+                <label class="ghost-btn" for="dailyExcelInput" style="width:max-content">⇪ Seleccionar archivo</label>
+                <input id="dailyExcelInput" type="file" accept=".xlsx,.xls,.csv" hidden>
+                <div class="small">Tamaño máximo recomendado: 10 MB</div>
+              </div>
+
+              <div class="import-card">
+                <div class="import-head">
+                  <div class="import-icon">🟢</div>
+                  <div>
+                    <div style="font-size:26px;font-weight:700;letter-spacing:-.03em">Importar desde WhatsApp</div>
+                    <div class="muted">Procesa mensajes de texto con datos</div>
+                  </div>
+                </div>
+                <button class="ghost-btn" id="openWhatsModalBtn" style="width:max-content">🗨 Procesar mensajes</button>
+                <div><a href="#" id="fillWhatsappExample">Ver ejemplo de formato</a></div>
               </div>
             </div>
-            <div class="card">
-              <div class="section-head"><div><h3>Importar desde WhatsApp</h3><p>Pegá el mensaje de producción y procesalo.</p></div></div>
-              <div class="field"><label>Mensaje</label><textarea id="whatsappText" placeholder="Ejemplo:\nFecha: 12/05/26\nResalado\nMariel: 227\nCristina: 345\nSal: 35"></textarea></div>
-              <div class="tabs-tools" style="margin-top:12px; margin-bottom:0;"><button class="btn btn-primary" onclick="parseWhatsapp()">Procesar mensaje</button><button class="btn btn-secondary" onclick="loadWhatsappExample()">Ver ejemplo</button></div>
-            </div>
-          </div>
 
-          <div class="card" style="margin-top:18px;">
-            <div class="section-head">
-              <div><h3>Vista previa / registros cargados</h3><p>Podés editar o borrar antes de seguir trabajando.</p></div>
-              <button class="btn btn-secondary btn-sm" onclick="exportTable('production')">⬇ Exportar producción</button>
-            </div>
-            <div class="table-wrap"><table id="productionTable"></table></div>
-          </div>
-        </section>
+            <div class="block-divider"></div>
 
-        <!-- PRESENTISMO -->
-        <section class="view" id="view-presentismo">
-          <div class="card">
-            <div class="section-head"><div><h3>Control diario de asistencia</h3><p>Registrá entrada, salida, estado y observación.</p></div></div>
-            <div class="form-row">
-              <div class="field"><label>Fecha</label><input type="date" id="attDate"></div>
-              <div class="field"><label>Empleado</label><select id="attEmployee"></select></div>
-              <div class="field"><label>Turno</label><select id="attShift"></select></div>
-              <div class="field"><label>Entrada</label><input type="time" id="attIn"></div>
-              <div class="field"><label>Salida</label><input type="time" id="attOut"></div>
-              <div class="field"><label>Estado</label><select id="attStatus"><option>Presente</option><option>Ausente</option><option>Retraso</option><option>Salida anticipada</option><option>Horas extra</option></select></div>
-              <div class="field"><label>Observación</label><input id="attObs" placeholder="Opcional"></div>
-              <button class="btn btn-primary" onclick="addAttendance()">Guardar asistencia</button>
+            <h4>Vista previa</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Línea / Sector</th><th>Producción (kg)</th><th>Sal usada (kg)</th><th>Acciones</th></tr></thead>
+                <tbody id="dailyTableBody"></tbody>
+              </table>
             </div>
-          </div>
 
-          <div class="card" style="margin-top:18px;">
-            <div class="section-head">
-              <div><h3>Listado de presentismo</h3><p>Filtros rápidos por fecha, turno y estado.</p></div>
-              <button class="btn btn-secondary btn-sm" onclick="exportTable('attendance')">⬇ Exportar presentismo</button>
+            <div class="center-actions">
+              <button class="primary-btn" id="saveDailyBtn">💾 Confirmar y guardar</button>
             </div>
-            <div class="form-row" style="margin-bottom:14px;">
-              <div class="field"><label>Filtrar fecha</label><input type="date" id="attFilterDate" onchange="renderAttendance()"></div>
-              <div class="field"><label>Turno</label><select id="attFilterShift" onchange="renderAttendance()"><option value="">Todos</option></select></div>
-              <div class="field"><label>Estado</label><select id="attFilterStatus" onchange="renderAttendance()"><option value="">Todos</option><option>Presente</option><option>Ausente</option><option>Retraso</option><option>Salida anticipada</option><option>Horas extra</option></select></div>
-            </div>
-            <div class="grid grid-4" id="attendanceSummary" style="margin-bottom:14px;"></div>
-            <div class="table-wrap"><table id="attendanceTable"></table></div>
+            <div class="helper-note">🛡 Se guardarán los datos de la fecha seleccionada</div>
           </div>
         </section>
 
-        <!-- SEGUIMIENTO -->
-        <section class="view" id="view-seguimiento">
-          <div class="split">
-            <div class="card">
-              <div class="section-head">
-                <div><h3>Desempeño semanal del personal</h3><p>Puntos de estado por empleado y resumen semanal.</p></div>
-                <div class="field" style="min-width:180px;"><label>Semana desde</label><input type="date" id="weekStart" onchange="renderTracking()"></div>
+        <!-- Presentismo -->
+        <section class="page" data-page="presentismo">
+          <div class="page-title-block">
+            <h3>4. Presentismo</h3>
+            <p>Control diario de asistencia</p>
+          </div>
+          <div class="content-card">
+            <div class="filter-row">
+              <div class="field"><label>Fecha</label><input id="attendanceFilterDate" class="input" type="date"></div>
+              <div class="field"><label>Turno</label><select id="attendanceFilterTurn"><option>Todos</option><option>Mañana</option><option>Tarde</option><option>Noche</option></select></div>
+              <div class="field"><label>Estado</label><select id="attendanceFilterStatus"><option>Todos</option><option>Presente</option><option>Retraso</option><option>Ausente</option><option>Salida anticipada</option></select></div>
+              <button class="primary-btn" id="applyAttendanceFilterBtn">Aplicar</button>
+            </div>
+
+            <div style="height:22px"></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Empleado</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Observación</th></tr></thead>
+                <tbody id="attendanceTableBody"></tbody>
+              </table>
+            </div>
+
+            <div class="present-summary" id="attendanceSummary"></div>
+
+            <div class="info-banner">ℹ Registro confiable y en tiempo real para tomar mejores decisiones.</div>
+          </div>
+        </section>
+
+        <!-- Seguimiento -->
+        <section class="page" data-page="seguimiento">
+          <div class="page-title-block">
+            <h3>5. Seguimiento</h3>
+            <p>Desempeño semanal del personal</p>
+          </div>
+          <div class="tracking-layout">
+            <div class="content-card tracking-card">
+              <div class="week-switch">
+                <button id="prevWeekBtn">‹</button>
+                <div class="range" id="weekRangeLabel">13/05/2024 - 19/05/2024</div>
+                <button id="nextWeekBtn">›</button>
               </div>
-              <div class="table-wrap"><table id="trackingTable"></table></div>
-              <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:13px;">
-                <span><i class="status-dot dot-green"></i> Óptimo</span>
-                <span><i class="status-dot dot-amber"></i> Regular</span>
-                <span><i class="status-dot dot-red"></i> Revisar</span>
-                <span><i class="status-dot dot-gray"></i> Sin datos / no laborable</span>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Empleado</th><th>Lun 13</th><th>Mar 14</th><th>Mié 15</th><th>Jue 16</th><th>Vie 17</th><th>Sáb 18</th><th>Dom 19</th><th>Estado semanal</th></tr></thead>
+                  <tbody id="trackingTableBody"></tbody>
+                </table>
+              </div>
+              <div class="helper-note"><span class="badge success">Óptimo</span><span class="badge warning">Regular</span><span class="badge danger">Revisar</span><span class="badge soft">Sin datos / No laborable</span></div>
+            </div>
+            <div class="content-card employee-panel" id="trackingEmployeePanel"></div>
+          </div>
+        </section>
+
+        <!-- Historial -->
+        <section class="page" data-page="historial">
+          <div class="page-title-block">
+            <h3>6. Historial</h3>
+            <p>Consulta y búsqueda histórica</p>
+          </div>
+          <div class="content-card">
+            <div class="filter-row" style="grid-template-columns:repeat(6,1fr)">
+              <div class="field"><label>Desde</label><input id="historyFrom" class="input" type="date"></div>
+              <div class="field"><label>Hasta</label><input id="historyTo" class="input" type="date"></div>
+              <div class="field"><label>Empleado</label><select id="historyEmployee"></select></div>
+              <div class="field"><label>Sector</label><select id="historySector"><option>Todos</option><option>Producción</option><option>Mantenimiento</option><option>Calidad</option></select></div>
+              <div class="field"><label>Tipo</label><select id="historyType"><option>Todos</option><option>Entrada</option><option>Salida</option><option>Retraso</option><option>Observación</option></select></div>
+              <button class="primary-btn" id="applyHistoryBtn">🔍 Buscar</button>
+            </div>
+
+            <div style="height:22px"></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fecha / Hora</th><th>Empleado</th><th>Sector</th><th>Tipo</th><th>Descripción</th><th>Usuario</th></tr></thead>
+                <tbody id="historyTableBody"></tbody>
+              </table>
+            </div>
+            <div class="history-actions">
+              <div style="font-weight:700" id="historyCountLabel">Mostrando 1 a 5 de 128 registros</div>
+              <button class="ghost-btn" id="exportHistoryBtn">⇩ Exportar</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sal -->
+        <section class="page" data-page="sal">
+          <div class="page-title-block">
+            <h3>7. Sal</h3>
+            <p>Control de stock y consumo</p>
+          </div>
+          <div class="salt-layout">
+            <div class="salt-kpis" id="saltKpis"></div>
+            <div class="salt-main">
+              <div class="content-card">
+                <h4>Consumo diario (kg)</h4>
+                <canvas id="saltChart" height="230"></canvas>
+              </div>
+              <div class="content-card">
+                <h4>Movimientos recientes</h4>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Fecha / Hora</th><th>Tipo</th><th>Cantidad (kg)</th><th>Origen / Destino</th><th>Usuario</th></tr></thead>
+                    <tbody id="saltTableBody"></tbody>
+                  </table>
+                </div>
+                <div class="link-line"><a href="#">Ver historial completo ›</a></div>
               </div>
             </div>
-            <div class="card employee-card" id="trackingDetail"></div>
+            <div class="info-banner">ℹ El consumo estimado y los días restantes se calculan con base en el promedio de los últimos 7 días.</div>
           </div>
         </section>
 
-        <!-- HISTORIAL -->
-        <section class="view" id="view-historial">
-          <div class="card">
-            <div class="section-head"><div><h3>Consulta y búsqueda histórica</h3><p>Buscá registros por rango de fecha, empleado, sector y tipo.</p></div></div>
-            <div class="form-row">
-              <div class="field"><label>Desde</label><input type="date" id="histFrom" onchange="renderHistory()"></div>
-              <div class="field"><label>Hasta</label><input type="date" id="histTo" onchange="renderHistory()"></div>
-              <div class="field"><label>Empleado</label><select id="histEmployee" onchange="renderHistory()"><option value="">Todos</option></select></div>
-              <div class="field"><label>Sector</label><select id="histSector" onchange="renderHistory()"><option value="">Todos</option></select></div>
-              <div class="field"><label>Tipo</label><select id="histType" onchange="renderHistory()"><option value="">Todos</option><option>Producción</option><option>Presentismo</option><option>Sal</option><option>Empleado</option></select></div>
-              <button class="btn btn-primary" onclick="renderHistory()">🔎 Buscar</button>
-            </div>
+        <!-- Empleados -->
+        <section class="page" data-page="empleados">
+          <div class="page-title-block">
+            <h3>8. Empleados</h3>
+            <p>Gestión clara del personal</p>
           </div>
-          <div class="card" style="margin-top:18px;">
-            <div class="section-head"><div><h3>Registros encontrados</h3><p id="historyCount">Mostrando registros</p></div><button class="btn btn-secondary btn-sm" onclick="exportHistory()">⬇ Exportar historial</button></div>
-            <div class="table-wrap"><table id="historyTable"></table></div>
+          <div class="content-card">
+            <div class="tab-actions">
+              <button class="primary-btn" id="openEmployeeModalBtn">＋ Agregar</button>
+              <button class="ghost-btn" id="modifyEmployeeBtn">✎ Modificar</button>
+              <button class="ghost-btn" id="deactivateEmployeeBtn">⊘ Dar de baja</button>
+              <button class="ghost-btn" id="exportEmployeesBtn">⇩ Exportar</button>
+            </div>
+
+            <div class="table-wrap employees-table">
+              <table>
+                <thead><tr><th>ID</th><th>Nombre</th><th>Apellido</th><th>Área</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="employeesTableBody"></tbody>
+              </table>
+            </div>
+            <div class="link-line"><a href="#">Ver todos los empleados ›</a></div>
           </div>
         </section>
-
-        <!-- SAL -->
-        <section class="view" id="view-sal">
-          <div class="grid grid-4" id="saltKpis"></div>
-          <div class="grid grid-2" style="margin-top:18px;">
-            <div class="card chart-box"><div class="section-head"><div><h3>Consumo diario de sal</h3><p>Últimos registros de uso</p></div></div><canvas id="saltChart"></canvas></div>
-            <div class="card">
-              <div class="section-head"><div><h3>Nuevo movimiento</h3><p>Entrada o salida de sal con origen/destino.</p></div></div>
-              <div class="form-row">
-                <div class="field"><label>Fecha</label><input type="date" id="saltDate"></div>
-                <div class="field"><label>Tipo</label><select id="saltType"><option>Entrada</option><option>Salida</option></select></div>
-                <div class="field"><label>Cantidad</label><input type="number" id="saltQty" placeholder="Ej: 35"></div>
-                <div class="field"><label>Origen / destino</label><select id="saltOrigin"></select></div>
-                <div class="field"><label>Usuario</label><input id="saltUser" placeholder="Ej: Sistema"></div>
-                <button class="btn btn-primary" onclick="addSaltMove()">Guardar movimiento</button>
-              </div>
-            </div>
-          </div>
-          <div class="card" style="margin-top:18px;">
-            <div class="section-head"><div><h3>Movimientos recientes</h3><p>Registro de entradas y salidas.</p></div><button class="btn btn-secondary btn-sm" onclick="exportTable('salt')">⬇ Exportar sal</button></div>
-            <div class="table-wrap"><table id="saltTable"></table></div>
-          </div>
-        </section>
-
-        <!-- EMPLEADOS -->
-        <section class="view" id="view-empleados">
-          <div class="card">
-            <div class="section-head">
-              <div><h3>Gestión clara del personal</h3><p>Alta, edición, baja y restauración sin perder historial.</p></div>
-              <div class="tabs-tools" style="margin:0;"><button class="btn btn-primary" onclick="openEmployeeModal()">＋ Agregar</button><button class="btn btn-secondary" onclick="exportTable('employees')">⬇ Exportar</button></div>
-            </div>
-            <div class="form-row" style="margin-bottom:14px;">
-              <div class="field"><label>Buscar empleado</label><input id="empSearch" placeholder="Nombre, apellido, sector..." oninput="renderEmployees()"></div>
-              <div class="field"><label>Estado</label><select id="empStatusFilter" onchange="renderEmployees()"><option value="">Todos</option><option>Activo</option><option>Administrativo</option><option>Baja</option></select></div>
-              <div class="field"><label>Turno</label><select id="empShiftFilter" onchange="renderEmployees()"><option value="">Todos</option></select></div>
-            </div>
-            <div class="table-wrap"><table id="employeesTable"></table></div>
-          </div>
-        </section>
-
-        <!-- REPORTES -->
-        <section class="view" id="view-reportes">
-          <div class="card">
-            <div class="section-head"><div><h3>Reportes y exportación</h3><p>Descargá la base completa o registros específicos.</p></div></div>
-            <div class="grid grid-3">
-              <button class="btn btn-primary" onclick="exportAllData()">⬇ Backup completo JSON</button>
-              <button class="btn btn-secondary" onclick="exportHistory()">⬇ Historial filtrado CSV</button>
-              <button class="btn btn-secondary" onclick="print()">🖨 Imprimir pantalla</button>
-            </div>
-            <div class="note" style="margin-top:18px;">ℹ️ <span>El backup JSON sirve para guardar toda la base y luego restaurarla desde Configuración. Para Excel, podés exportar tablas específicas en CSV.</span></div>
-          </div>
-        </section>
-
-        <!-- CONFIG -->
-        <section class="view" id="view-config">
-          <div class="grid grid-2">
-            <div class="card settings-block">
-              <div class="section-head"><div><h3>Configuración operativa</h3><p>Personalizá sectores, turnos y frigoríficos.</p></div></div>
-              <div class="field"><label>Sectores</label><textarea id="cfgSectors"></textarea></div>
-              <div class="field"><label>Turnos</label><textarea id="cfgShifts"></textarea></div>
-              <div class="field"><label>Frigoríficos / destinos de sal</label><textarea id="cfgPlants"></textarea></div>
-              <button class="btn btn-primary" onclick="saveConfig()">Guardar configuración</button>
-            </div>
-            <div class="card settings-block">
-              <div class="section-head"><div><h3>Backup y restauración</h3><p>Guardá o recuperá toda la información.</p></div></div>
-              <button class="btn btn-primary" onclick="exportAllData()">⬇ Descargar backup completo</button>
-              <label class="btn btn-secondary">⬆ Restaurar backup JSON<input hidden type="file" accept=".json" onchange="restoreBackup(event)"></label>
-              <button class="btn btn-danger" onclick="resetDemoConfirm()">Eliminar datos y volver a ejemplo</button>
-              <div class="note">⚠️ <span>La restauración reemplaza la base actual de este navegador. Exportá un backup antes de hacer cambios grandes.</span></div>
-            </div>
-          </div>
-        </section>
-
-        <div class="footer-safe"></div>
       </div>
     </main>
   </div>
 
-  <!-- MODAL EMPLEADO -->
-  <div class="modal-backdrop" id="employeeModal">
+  <!-- Modal WhatsApp -->
+  <div class="modal-backdrop" id="whatsModal">
     <div class="modal">
-      <div class="modal-head">
-        <div><h3 id="employeeModalTitle">Agregar empleado</h3><p>Completá los datos del personal.</p></div>
-        <button class="icon-btn" onclick="closeEmployeeModal()">×</button>
+      <h4>Importar desde WhatsApp</h4>
+      <div class="field">
+        <label>Pegá el mensaje acá</label>
+        <textarea id="whatsText" class="input" placeholder="Fecha: 15/05/2024&#10;Línea 1: 320000 kg - Sal 6200 kg&#10;Línea 2: 280000 kg - Sal 5600 kg"></textarea>
       </div>
-      <input type="hidden" id="empIdEdit">
-      <div class="form-row">
-        <div class="field"><label>Nombre</label><input id="empName"></div>
-        <div class="field"><label>Apellido</label><input id="empLast"></div>
-        <div class="field"><label>Área / sector habitual</label><select id="empArea"></select></div>
-        <div class="field"><label>Turno</label><select id="empShift"></select></div>
-        <div class="field"><label>Rango</label><select id="empRole"><option>Operario</option><option>Supervisor</option><option>Administrativo</option></select></div>
-        <div class="field"><label>Estado</label><select id="empStatus"><option>Activo</option><option>Administrativo</option><option>Baja</option></select></div>
-      </div>
-      <div class="tabs-tools" style="justify-content:flex-end;margin-top:18px;margin-bottom:0;">
-        <button class="btn btn-secondary" onclick="closeEmployeeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveEmployee()">Guardar empleado</button>
+      <div class="center-actions" style="justify-content:flex-end">
+        <button class="ghost-btn" id="closeWhatsModalBtn">Cancelar</button>
+        <button class="primary-btn" id="processWhatsBtn">Procesar</button>
       </div>
     </div>
   </div>
 
-  <div class="toast-wrap" id="toastWrap"></div>
+  <!-- Modal Empleado -->
+  <div class="modal-backdrop" id="employeeModal">
+    <div class="modal">
+      <h4 id="employeeModalTitle">Agregar empleado</h4>
+      <div class="two-col">
+        <div class="field"><label>ID</label><input class="input" id="empId" type="number"></div>
+        <div class="field"><label>Nombre</label><input class="input" id="empNombre" type="text"></div>
+        <div class="field"><label>Apellido</label><input class="input" id="empApellido" type="text"></div>
+        <div class="field"><label>Área</label><select id="empArea"><option>Producción</option><option>Mantenimiento</option><option>Calidad</option><option>Administración</option></select></div>
+        <div class="field"><label>Estado</label><select id="empEstado"><option>Activo</option><option>Inactivo</option></select></div>
+      </div>
+      <div class="center-actions" style="justify-content:flex-end">
+        <button class="ghost-btn" id="closeEmployeeModalBtn">Cancelar</button>
+        <button class="primary-btn" id="saveEmployeeBtn">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    const STORE_KEY = 'panel_integral_planta_v1';
-    const defaultConfig = {
-      sectors: ['Resalado', 'Sacudido', 'Lavado a mano', 'Lavado a máquina', 'Salado a máquina', 'Clasificado', 'Seleccionado', 'Empaque', 'Apilado', 'Prensa'],
-      shifts: ['Día', 'Tarde', 'Intermedio', 'Cortado', 'Noche'],
-      plants: ['Deltacar', 'Alba', 'Cooperativa Paraná', 'Santa Inés', 'Suipacha', 'Recreo', 'Brillante']
+    const navConfig = [
+      {id:'dashboard', label:'Dashboard', sub:'Vista principal con indicadores clave', icon:'⌂'},
+      {id:'carga', label:'Carga diaria', sub:'Registro manual e importación de datos', icon:'🗂'},
+      {id:'presentismo', label:'Presentismo', sub:'Control diario de asistencia', icon:'👥'},
+      {id:'seguimiento', label:'Seguimiento', sub:'Desempeño semanal del personal', icon:'◔'},
+      {id:'historial', label:'Historial', sub:'Consulta y búsqueda histórica', icon:'☰'},
+      {id:'sal', label:'Sal', sub:'Control de stock y consumo', icon:'🧂'},
+      {id:'empleados', label:'Empleados', sub:'Gestión clara del personal', icon:'☷'}
+    ];
+
+    const storageKey = 'panel-integral-planta-fiel-pdf-v1';
+    const today = new Date();
+    const formatDate = d => new Date(d).toISOString().slice(0,10);
+    const displayDate = d => {
+      if(!d) return '';
+      const date = new Date(d);
+      if(Number.isNaN(date.getTime())) return d;
+      return date.toLocaleDateString('es-AR');
+    };
+    const formatDateTime = iso => new Date(iso).toLocaleString('es-AR', {hour12:false});
+
+    const defaultState = {
+      lastUpdate: new Date().toISOString(),
+      currentPage: 'dashboard',
+      weekOffset: 0,
+      selectedTrackingEmployeeId: 101,
+      draftDailyRows: [
+        {id: crypto.randomUUID(), line:'Línea 1', production:320000, salt:6200},
+        {id: crypto.randomUUID(), line:'Línea 2', production:280000, salt:5600},
+        {id: crypto.randomUUID(), line:'Línea 3', production:250000, salt:5000}
+      ],
+      dailyRecords: [
+        {date:'2024-05-15', line:'Línea 1', production:320000, salt:6200},
+        {date:'2024-05-15', line:'Línea 2', production:280000, salt:5600},
+        {date:'2024-05-15', line:'Línea 3', production:250000, salt:5000}
+      ],
+      employees:[
+        {id:101, nombre:'Juan', apellido:'Pérez', area:'Producción', estado:'Activo'},
+        {id:102, nombre:'María', apellido:'Gómez', area:'Producción', estado:'Activo'},
+        {id:103, nombre:'Carlos', apellido:'López', area:'Mantenimiento', estado:'Activo'},
+        {id:104, nombre:'Lucía', apellido:'Martínez', area:'Producción', estado:'Inactivo'},
+        {id:105, nombre:'Pedro', apellido:'Ramírez', area:'Producción', estado:'Activo'}
+      ],
+      attendance:[
+        {employeeId:101, fecha:'2024-05-15', turno:'Mañana', entrada:'07:02', salida:'16:01', estado:'Presente', observacion:''},
+        {employeeId:102, fecha:'2024-05-15', turno:'Mañana', entrada:'07:10', salida:'15:58', estado:'Retraso', observacion:'Llegó 10 min tarde'},
+        {employeeId:103, fecha:'2024-05-15', turno:'Mañana', entrada:'', salida:'', estado:'Ausente', observacion:'Sin registro de entrada'},
+        {employeeId:104, fecha:'2024-05-15', turno:'Mañana', entrada:'07:05', salida:'13:10', estado:'Salida anticipada', observacion:'Salida por turno médico'},
+        {employeeId:105, fecha:'2024-05-15', turno:'Mañana', entrada:'07:05', salida:'16:10', estado:'Presente', observacion:''}
+      ],
+      tracking:[
+        {employeeId:101, days:['Óptimo','Óptimo','Óptimo','Óptimo','Óptimo','Sin datos','Sin datos']},
+        {employeeId:102, days:['Óptimo','Óptimo','Óptimo','Regular','Regular','Sin datos','Sin datos']},
+        {employeeId:103, days:['Óptimo','Regular','Revisar','Regular','Revisar','Sin datos','Sin datos']},
+        {employeeId:104, days:['Óptimo','Óptimo','Óptimo','Regular','Óptimo','Sin datos','Sin datos']},
+        {employeeId:105, days:['Óptimo','Óptimo','Óptimo','Óptimo','Óptimo','Sin datos','Sin datos']}
+      ],
+      history:[
+        {datetime:'2024-05-16T08:01:00', empleado:'Martínez, Juan', sector:'Producción', tipo:'Entrada', descripcion:'Registro de entrada', usuario:'Administrador'},
+        {datetime:'2024-05-16T12:45:00', empleado:'Gómez, Laura', sector:'Producción', tipo:'Retraso', descripcion:'Llegada fuera de horario', usuario:'Sistema'},
+        {datetime:'2024-05-16T13:02:00', empleado:'Pérez, Diego', sector:'Mantenimiento', tipo:'Salida', descripcion:'Registro de salida', usuario:'Administrador'},
+        {datetime:'2024-05-16T17:05:00', empleado:'López, Carla', sector:'Producción', tipo:'Observación', descripcion:'Pausa extendida', usuario:'Supervisor'},
+        {datetime:'2024-05-16T18:10:00', empleado:'Rodríguez, Martín', sector:'Calidad', tipo:'Salida', descripcion:'Registro de salida', usuario:'Sistema'}
+      ],
+      saltMovements:[
+        {datetime:'2024-05-16T16:00:00', tipo:'Entrada', cantidad:120, origen:'Producción Línea 1', usuario:'Juan Pérez'},
+        {datetime:'2024-05-16T10:15:00', tipo:'Salida', cantidad:-50, origen:'Producción Línea 2', usuario:'María Gómez'},
+        {datetime:'2024-05-15T14:30:00', tipo:'Entrada', cantidad:80, origen:'Depósito Central', usuario:'Sistema'},
+        {datetime:'2024-05-15T08:45:00', tipo:'Salida', cantidad:-65, origen:'Producción Línea 1', usuario:'Luis Ortega'},
+        {datetime:'2024-05-14T17:20:00', tipo:'Salida', cantidad:-40, origen:'Producción Línea 2', usuario:'Ana Torres'}
+      ],
+      saltStock:1250,
+      editingEmployeeId:null
     };
 
     let state = loadState();
-    let charts = {};
 
-    function defaultState() {
-      const today = toISODate(new Date());
-      return {
-        config: structuredCloneSafe(defaultConfig),
-        employees: [
-          {id: uid(), name:'Juan', last:'Pérez', area:'Resalado', shift:'Día', role:'Operario', status:'Activo', created: today},
-          {id: uid(), name:'María', last:'Gómez', area:'Sacudido', shift:'Día', role:'Operario', status:'Activo', created: today},
-          {id: uid(), name:'Carlos', last:'López', area:'Mantenimiento', shift:'Tarde', role:'Supervisor', status:'Activo', created: today},
-          {id: uid(), name:'Lucía', last:'Martínez', area:'Lavado a mano', shift:'Intermedio', role:'Operario', status:'Activo', created: today},
-          {id: uid(), name:'Pedro', last:'Ramírez', area:'Empaque', shift:'Día', role:'Operario', status:'Activo', created: today}
-        ],
-        production: [
-          {id: uid(), date: today, employee:'Juan Pérez', sector:'Resalado', qty:320, salt:6, origin:'Ejemplo'},
-          {id: uid(), date: today, employee:'María Gómez', sector:'Sacudido', qty:280, salt:0, origin:'Ejemplo'},
-          {id: uid(), date: today, employee:'Lucía Martínez', sector:'Lavado a mano', qty:250, salt:0, origin:'Ejemplo'}
-        ],
-        attendance: [
-          {id: uid(), date: today, employee:'Juan Pérez', shift:'Día', in:'07:02', out:'16:01', status:'Presente', obs:''},
-          {id: uid(), date: today, employee:'María Gómez', shift:'Día', in:'07:10', out:'15:58', status:'Retraso', obs:'Llegó 10 min tarde'},
-          {id: uid(), date: today, employee:'Carlos López', shift:'Tarde', in:'', out:'', status:'Ausente', obs:'Sin registro de entrada'},
-          {id: uid(), date: today, employee:'Lucía Martínez', shift:'Intermedio', in:'07:05', out:'13:10', status:'Salida anticipada', obs:'Salida por turno médico'}
-        ],
-        salt: [
-          {id: uid(), date: today, type:'Entrada', qty:120, origin:'Depósito central', user:'Sistema'},
-          {id: uid(), date: today, type:'Salida', qty:50, origin:'Producción Línea 2', user:'Sistema'},
-          {id: uid(), date: addDaysISO(today,-1), type:'Salida', qty:65, origin:'Producción Línea 1', user:'Sistema'}
-        ]
-      };
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(storageKey);
+        if(raw){
+          const parsed = JSON.parse(raw);
+          return {...structuredClone(defaultState), ...parsed};
+        }
+      }catch(e){ console.error(e); }
+      return structuredClone(defaultState);
     }
 
-    function structuredCloneSafe(obj){ return JSON.parse(JSON.stringify(obj)); }
-    function uid(){ return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
-    function loadState() {
-      try {
-        const saved = localStorage.getItem(STORE_KEY);
-        if (!saved) return defaultState();
-        const parsed = JSON.parse(saved);
-        return { ...defaultState(), ...parsed, config: { ...defaultConfig, ...(parsed.config || {}) } };
-      } catch (e) { return defaultState(); }
-    }
-    function saveState() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-
-    function toISODate(date) {
-      const d = new Date(date);
-      const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2,'0');
-      const day = String(d.getDate()).padStart(2,'0');
-      return `${y}-${m}-${day}`;
-    }
-    function formatDate(iso) {
-      if (!iso) return '-';
-      const [y,m,d] = iso.split('-');
-      return `${d}/${m}/${String(y).slice(-2)}`;
-    }
-    function formatDateFull(iso) {
-      if (!iso) return '-';
-      const [y,m,d] = iso.split('-');
-      return `${d}/${m}/${y}`;
-    }
-    function addDaysISO(iso, days) {
-      const d = new Date(iso + 'T00:00:00');
-      d.setDate(d.getDate() + days);
-      return toISODate(d);
-    }
-    function parseDateAny(value) {
-      if (!value) return toISODate(new Date());
-      if (value instanceof Date) return toISODate(value);
-      const s = String(value).trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-      const m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-      if (m) {
-        let y = m[3].length === 2 ? '20' + m[3] : m[3];
-        return `${y}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
-      }
-      return toISODate(new Date());
-    }
-    function number(n) { return Number(n || 0).toLocaleString('es-AR'); }
-    function moneyless(n) { return Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 }); }
-    function escapeHtml(s) { return String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-    function fullName(e) { return `${e.name} ${e.last}`.trim(); }
-
-    function iconSvg(type) {
-      const icons = {
-        prod:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17V9m4 8V4m4 13v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        users:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        alert:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        salt:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 8h10l2 13H5L7 8Zm3 0V5a2 2 0 0 1 4 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-      };
-      return icons[type] || icons.prod;
+    function saveState(){
+      state.lastUpdate = new Date().toISOString();
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      document.getElementById('lastUpdateLabel').textContent = formatDateTime(state.lastUpdate);
     }
 
-    function setDefaults() {
-      const today = toISODate(new Date());
-      ['prodDate','attDate','attFilterDate','saltDate'].forEach(id => { const el=document.getElementById(id); if(el && !el.value) el.value=today; });
-      const ws = document.getElementById('weekStart'); if (ws && !ws.value) ws.value = addDaysISO(today, -4);
-      const hf = document.getElementById('histFrom'); if (hf && !hf.value) hf.value = addDaysISO(today, -30);
-      const ht = document.getElementById('histTo'); if (ht && !ht.value) ht.value = today;
-      document.getElementById('todayText').textContent = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+    const qs = sel => document.querySelector(sel);
+    const qsa = sel => [...document.querySelectorAll(sel)];
+    const pageTitle = qs('#pageTitle');
+    const pageSubtitle = qs('#pageSubtitle');
+
+    function renderNav(){
+      const nav = qs('#mainNav');
+      nav.innerHTML = navConfig.map(item => `
+        <button class="nav-btn ${item.id===state.currentPage?'active':''}" data-nav="${item.id}">
+          <span class="nav-ico">${item.icon}</span><span>${item.label}</span>
+        </button>
+      `).join('');
+      qsa('[data-nav]').forEach(btn => btn.addEventListener('click', ()=> switchPage(btn.dataset.nav)));
     }
 
-    function fillSelect(el, options, selected='', first='') {
-      if (!el) return;
-      el.innerHTML = '';
-      if (first !== null && first !== undefined && first !== '') el.insertAdjacentHTML('beforeend', `<option value="">${first}</option>`);
-      options.forEach(o => el.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`));
-      if (selected) el.value = selected;
-    }
-
-    function refreshSelects() {
-      const activeEmployees = state.employees.filter(e => e.status !== 'Baja' && e.status !== 'Administrativo').map(fullName).sort();
-      const allEmployees = state.employees.map(fullName).sort();
-      fillSelect(document.getElementById('prodEmployee'), activeEmployees);
-      fillSelect(document.getElementById('attEmployee'), allEmployees);
-      fillSelect(document.getElementById('histEmployee'), allEmployees, '', 'Todos');
-      fillSelect(document.getElementById('prodSector'), state.config.sectors);
-      fillSelect(document.getElementById('histSector'), state.config.sectors, '', 'Todos');
-      fillSelect(document.getElementById('empArea'), state.config.sectors);
-      fillSelect(document.getElementById('empShift'), state.config.shifts);
-      fillSelect(document.getElementById('attShift'), state.config.shifts);
-      fillSelect(document.getElementById('attFilterShift'), state.config.shifts, '', 'Todos');
-      fillSelect(document.getElementById('empShiftFilter'), state.config.shifts, '', 'Todos');
-      fillSelect(document.getElementById('saltOrigin'), [...state.config.plants, ...state.config.sectors.map(s=>'Producción ' + s)]);
-    }
-
-    function navTo(view) {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
-      const titles = {
-        dashboard:['Dashboard','Vista principal con indicadores clave'], carga:['Carga diaria','Registro manual e importación de datos'], presentismo:['Presentismo','Control diario de asistencia'], seguimiento:['Seguimiento','Desempeño semanal del personal'], historial:['Historial','Consulta y búsqueda histórica'], sal:['Sal','Control de stock y consumo'], empleados:['Empleados','Gestión clara del personal'], reportes:['Reportes','Exportaciones y respaldos'], config:['Configuración','Parámetros del sistema']
-      };
-      document.getElementById('currentTitle').textContent = titles[view][0];
-      document.getElementById('currentSubtitle').textContent = titles[view][1];
-      document.getElementById('sidebar').classList.remove('open');
-      setTimeout(renderCharts, 60);
-    }
-
-    document.getElementById('nav').addEventListener('click', (e) => {
-      const btn = e.target.closest('.nav-btn');
-      if (btn) navTo(btn.dataset.view);
-    });
-
-    function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
-
-    function toast(message) {
-      const wrap = document.getElementById('toastWrap');
-      const el = document.createElement('div');
-      el.className = 'toast';
-      el.textContent = message;
-      wrap.appendChild(el);
-      setTimeout(() => el.remove(), 3200);
-    }
-
-    function openQuickAdd(){ navTo('carga'); document.getElementById('prodQty').focus(); }
-
-    function kpi(title, value, unit, icon, cls='') {
-      return `<div class="kpi-card"><div><small>${title}</small><div class="kpi-value ${cls}">${value}</div><div class="kpi-unit">${unit}</div></div><div class="kpi-icon">${iconSvg(icon)}</div></div>`;
-    }
-
-    function statusBadge(status) {
-      const map = {
-        'Presente':'green', 'Activo':'green', 'Entrada':'green', 'Óptimo':'green',
-        'Ausente':'red', 'Baja':'red', 'Salida':'red', 'Revisar':'red',
-        'Retraso':'amber', 'Regular':'amber',
-        'Salida anticipada':'blue', 'Horas extra':'blue', 'Administrativo':'blue',
-        'Inactivo':'gray'
-      };
-      return `<span class="badge ${map[status] || 'gray'}">${escapeHtml(status)}</span>`;
-    }
-
-    function renderDashboard() {
-      const today = document.getElementById('prodDate')?.value || toISODate(new Date());
-      const prodToday = state.production.filter(p => p.date === today).reduce((a,p)=>a+Number(p.qty||0),0);
-      const attToday = state.attendance.filter(a => a.date === today);
-      const present = attToday.filter(a => a.status !== 'Ausente').length;
-      const absent = attToday.filter(a => a.status === 'Ausente').length;
-      const saltUsed = state.salt.filter(s => s.type === 'Salida').reduce((a,s)=>a+Number(s.qty||0),0);
-      document.getElementById('dashboardKpis').innerHTML = [
-        kpi('Producción del día', number(prodToday), 'unidades / kg', 'prod', 'blue'),
-        kpi('Presentes', number(present), 'personas', 'users', 'green'),
-        kpi('Ausentes', number(absent), 'personas', 'alert', 'red'),
-        kpi('Sal usada total', number(saltUsed), 'bolsas / kg', 'salt', 'blue')
-      ].join('');
-
-      const byEmp = {};
-      state.production.forEach(p => { byEmp[p.employee] = (byEmp[p.employee] || 0) + Number(p.qty || 0); });
-      const rows = Object.entries(byEmp).sort((a,b)=>b[1]-a[1]).slice(0,8);
-      document.getElementById('rankingTable').innerHTML = `<thead><tr><th>#</th><th>Empleado</th><th>Producción</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r[0])}</td><td><strong>${number(r[1])}</strong></td></tr>`).join('') || `<tr><td colspan="3">Sin producción cargada.</td></tr>`}</tbody>`;
-    }
-
-    function groupByDate(items, key='qty') {
-      const out = {};
-      items.forEach(item => out[item.date] = (out[item.date] || 0) + Number(item[key] || 0));
-      return Object.entries(out).sort((a,b)=>a[0].localeCompare(b[0]));
-    }
-
-    function makeChart(id, type, data, options={}) {
-      const ctx = document.getElementById(id);
-      if (!ctx || !window.Chart) return;
-      if (charts[id]) charts[id].destroy();
-      charts[id] = new Chart(ctx, { type, data, options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:true, labels:{ boxWidth:10, usePointStyle:true } } }, ...options } });
-    }
-
-    function renderCharts() {
-      if (!window.Chart) return;
-      const prod = groupByDate(state.production, 'qty').slice(-12);
-      makeChart('productionChart', 'line', {
-        labels: prod.map(([d])=>formatDate(d)),
-        datasets: [{ label:'Producción', data: prod.map(([,v])=>v), tension:.35, fill:true, borderWidth:2, pointRadius:3 }]
-      }, { scales:{ y:{ beginAtZero:true } } });
-
-      const present = state.attendance.filter(a => a.status !== 'Ausente').length;
-      const absent = state.attendance.filter(a => a.status === 'Ausente').length;
-      makeChart('attendanceChart', 'doughnut', {
-        labels:['Presentes / con registro', 'Ausentes'],
-        datasets:[{ data:[present, absent], borderWidth:0 }]
-      }, { cutout:'68%' });
-
-      const salt = groupByDate(state.salt.filter(s=>s.type==='Salida'), 'qty').slice(-12);
-      makeChart('saltChart', 'line', {
-        labels: salt.map(([d])=>formatDate(d)),
-        datasets:[{ label:'Consumo de sal', data:salt.map(([,v])=>v), tension:.35, fill:true, borderWidth:2, pointRadius:3 }]
-      }, { scales:{ y:{ beginAtZero:true } } });
-    }
-
-    function renderProduction() {
-      document.getElementById('productionTable').innerHTML = `<thead><tr><th>Fecha</th><th>Empleado</th><th>Sector</th><th>Producción</th><th>Sal</th><th>Origen</th><th>Acciones</th></tr></thead><tbody>${state.production.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<tr><td>${formatDateFull(p.date)}</td><td>${escapeHtml(p.employee)}</td><td>${escapeHtml(p.sector)}</td><td><strong>${number(p.qty)}</strong></td><td>${number(p.salt)}</td><td>${escapeHtml(p.origin || 'Manual')}</td><td class="actions-cell"><button class="icon-btn" onclick="editProduction('${p.id}')">✎</button><button class="icon-btn" onclick="deleteItem('production','${p.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="7">Sin registros.</td></tr>`}</tbody>`;
-    }
-
-    function addProduction() {
-      const date = document.getElementById('prodDate').value || toISODate(new Date());
-      const employee = document.getElementById('prodEmployee').value;
-      const sector = document.getElementById('prodSector').value;
-      const qty = Number(document.getElementById('prodQty').value || 0);
-      const salt = Number(document.getElementById('prodSalt').value || 0);
-      if (!employee || !sector || (!qty && !salt)) return toast('Completá empleado, sector y cantidad.');
-      state.production.push({ id:uid(), date, employee, sector, qty, salt, origin:'Manual' });
-      if (salt > 0) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, user:employee });
+    function switchPage(page){
+      state.currentPage = page;
+      qsa('.page').forEach(sec => sec.classList.toggle('active', sec.dataset.page===page));
+      qsa('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.nav===page));
+      const config = navConfig.find(x=>x.id===page);
+      pageTitle.textContent = config.label;
+      pageSubtitle.textContent = config.sub;
+      qs('#sidebar').classList.remove('show');
       saveState();
-      document.getElementById('prodQty').value = '';
-      document.getElementById('prodSalt').value = '';
-      refreshUI();
-      toast('Producción guardada.');
     }
 
-    function editProduction(id) {
-      const p = state.production.find(x=>x.id===id);
-      if (!p) return;
-      document.getElementById('prodDate').value = p.date;
-      document.getElementById('prodEmployee').value = p.employee;
-      document.getElementById('prodSector').value = p.sector;
-      document.getElementById('prodQty').value = p.qty;
-      document.getElementById('prodSalt').value = p.salt;
-      state.production = state.production.filter(x=>x.id!==id);
-      saveState();
-      refreshUI();
-      toast('Registro listo para editar. Guardalo nuevamente.');
+    function employeeFullNameFromId(id){
+      const emp = state.employees.find(e => e.id===id);
+      return emp ? `${emp.apellido}, ${emp.nombre}` : 'Empleado';
     }
 
-    function parseWhatsapp() {
-      const text = document.getElementById('whatsappText').value;
-      if (!text.trim()) return toast('Pegá un mensaje para procesar.');
-      const date = parseDateAny((text.match(/(?:fecha|día|dia)\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i) || [])[1]) || toISODate(new Date());
-      const lines = text.split(/\n+/).map(l=>l.trim()).filter(Boolean);
-      let sector = 'Sin sector';
-      let added = 0;
-      for (const line of lines) {
-        const clean = line.replace(/[✅•\-]/g,'').trim();
-        if (!clean || /total|fecha|sal\s*:/i.test(clean)) continue;
-        const sectorMatch = state.config.sectors.find(s => clean.toLowerCase().includes(s.toLowerCase()));
-        if (sectorMatch && !clean.includes(':')) { sector = sectorMatch; continue; }
-        const pair = clean.match(/^([A-Za-zÁÉÍÓÚÜÑáéíóúüñ .]+)\s*:\s*(\d+(?:[\.,]\d+)?)/);
-        if (pair) {
-          const employeeRaw = pair[1].trim();
-          const qty = Number(pair[2].replace(',','.')) || 0;
-          if (qty > 0) {
-            const employee = normalizeEmployeeName(employeeRaw);
-            state.production.push({ id:uid(), date, employee, sector, qty, salt:0, origin:'WhatsApp' });
-            added++;
+    function computeDashboard(){
+      const productionToday = state.dailyRecords.reduce((sum,row)=>sum + Number(row.production||0),0);
+      const saltToday = state.dailyRecords.reduce((sum,row)=>sum + Number(row.salt||0),0);
+      const presentes = state.attendance.filter(x=>x.estado==='Presente').length;
+      const ausentes = state.attendance.filter(x=>x.estado==='Ausente').length;
+      return {productionToday, saltToday, presentes, ausentes};
+    }
+
+    let productionChart, attendanceChart, saltChart;
+
+    function renderDashboard(){
+      const data = computeDashboard();
+      qs('#dashboardKpis').innerHTML = [
+        {label:'Producción del día',value:data.productionToday.toLocaleString('es-AR'),sub:'kg',cls:''},
+        {label:'Presentes',value:data.presentes,sub:'personas',cls:'green'},
+        {label:'Ausentes',value:data.ausentes,sub:'personas',cls:'red'},
+        {label:'Sal usada',value:data.saltToday.toLocaleString('es-AR'),sub:'kg',cls:'blue'}
+      ].map(k=>`<div class="kpi-card"><div class="label">${k.label}</div><div class="value ${k.cls}">${k.value}</div><div class="sub ${k.cls}">${k.sub}</div></div>`).join('');
+
+      const sorted = [...state.dailyRecords].sort((a,b)=>b.production-a.production).slice(0,5);
+      qs('#rankingList').innerHTML = sorted.map((r,i)=>`
+        <div class="ranking-item">
+          <strong>${i+1}</strong>
+          <span>${r.line}</span>
+          <span>${Number(r.production).toLocaleString('es-AR')} kg</span>
+          <div class="bar"><span style="width:${Math.max(18,(r.production/sorted[0].production)*100)}%"></span></div>
+        </div>`).join('');
+
+      qs('#inlineMetrics').innerHTML = `
+        <div class="inline-metric"><div class="metric-label">Producción total</div><div class="metric-big">${data.productionToday.toLocaleString('es-AR')} kg</div><div class="metric-delta">+8,5% vs ayer ↗</div></div>
+        <div class="inline-metric"><div class="metric-label">Personal total</div><div class="metric-big">${state.employees.filter(e=>e.estado==='Activo').length} personas</div><div class="metric-delta">+3 vs ayer ↗</div></div>
+        <div class="inline-metric"><div class="metric-label">Sal usada</div><div class="metric-big">${data.saltToday.toLocaleString('es-AR')} kg</div><div class="metric-delta">+2,1% vs ayer ↗</div></div>
+      `;
+
+      const lineLabels = ['06:00','08:00','10:00','12:00','14:00','16:00','18:00'];
+      const lineVals = [250000,400000,330000,620000,890000,780000,480000];
+      if(productionChart) productionChart.destroy();
+      productionChart = new Chart(qs('#productionChart'), {
+        type:'line',
+        data:{
+          labels:lineLabels,
+          datasets:[{label:'Producción',data:lineVals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.10)',tension:.35,fill:true,pointRadius:4,pointHoverRadius:4}]
+        },
+        options:{
+          maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{grid:{display:false}},
+            y:{grid:{color:'#eef2f7'},ticks:{callback:v=>v>=1000?`${v/1000}k`:v}}
           }
         }
-      }
-      saveState();
-      refreshUI();
-      toast(`Mensaje procesado: ${added} registros cargados.`);
-    }
-
-    function normalizeEmployeeName(raw) {
-      const found = state.employees.find(e => e.name.toLowerCase() === raw.toLowerCase() || fullName(e).toLowerCase().includes(raw.toLowerCase()));
-      return found ? fullName(found) : raw;
-    }
-
-    function loadWhatsappExample() {
-      document.getElementById('whatsappText').value = `Fecha: 12/05/26\n\nResalado\nMariel: 227\nCristina: 345\nCandela: 250\nTotal: 822\nSal: 35\n\nSacudido\nMarcelo: 540\nLeo: 566\nTotal: 1106`;
-    }
-
-    async function importProductionFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      try {
-        if (!window.XLSX) return toast('No cargó la librería XLSX. Verificá internet o usá CSV.');
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data);
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval:'' });
-        let added = 0;
-        rows.forEach(r => {
-          const keys = Object.keys(r);
-          const get = (...names) => {
-            const k = keys.find(x => names.some(n => x.toLowerCase().includes(n)));
-            return k ? r[k] : '';
-          };
-          const date = parseDateAny(get('fecha','día','dia'));
-          const employee = String(get('empleado','operario','nombre') || '').trim();
-          const sector = String(get('sector','línea','linea','area') || 'Sin sector').trim();
-          const qty = Number(String(get('cantidad','producción','produccion','unidad')).replace(',','.')) || 0;
-          const salt = Number(String(get('sal')).replace(',','.')) || 0;
-          if (employee && (qty || salt)) {
-            state.production.push({ id:uid(), date, employee, sector, qty, salt, origin:'Excel' });
-            if (salt) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, user:employee });
-            added++;
-          }
-        });
-        saveState(); refreshUI(); toast(`Excel importado: ${added} registros.`);
-      } catch (err) { console.error(err); toast('No pude importar el archivo. Revisá columnas/formato.'); }
-      event.target.value = '';
-    }
-
-    function renderAttendance() {
-      const date = document.getElementById('attFilterDate').value;
-      const shift = document.getElementById('attFilterShift').value;
-      const status = document.getElementById('attFilterStatus').value;
-      let rows = state.attendance.slice();
-      if (date) rows = rows.filter(a => a.date === date);
-      if (shift) rows = rows.filter(a => a.shift === shift);
-      if (status) rows = rows.filter(a => a.status === status);
-      const counts = {
-        Presentes: rows.filter(a=>a.status==='Presente' || a.status==='Horas extra').length,
-        Ausentes: rows.filter(a=>a.status==='Ausente').length,
-        Retrasos: rows.filter(a=>a.status==='Retraso').length,
-        'Salidas anticipadas': rows.filter(a=>a.status==='Salida anticipada').length
-      };
-      document.getElementById('attendanceSummary').innerHTML = [
-        kpi('Presentes', counts.Presentes, 'personas', 'users', 'green'),
-        kpi('Ausentes', counts.Ausentes, 'personas', 'alert', 'red'),
-        kpi('Retrasos', counts.Retrasos, 'personas', 'alert', 'amber'),
-        kpi('Salidas anticipadas', counts['Salidas anticipadas'], 'personas', 'alert', 'blue')
-      ].join('');
-      document.getElementById('attendanceTable').innerHTML = `<thead><tr><th>Fecha</th><th>Empleado</th><th>Turno</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(a=>`<tr><td>${formatDateFull(a.date)}</td><td>${escapeHtml(a.employee)}</td><td>${escapeHtml(a.shift)}</td><td>${a.in || '-'}</td><td>${a.out || '-'}</td><td>${statusBadge(a.status)}</td><td>${escapeHtml(a.obs || '-')}</td><td class="actions-cell"><button class="icon-btn" onclick="editAttendance('${a.id}')">✎</button><button class="icon-btn" onclick="deleteItem('attendance','${a.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="8">Sin registros.</td></tr>`}</tbody>`;
-    }
-
-    function addAttendance() {
-      const item = {
-        id: uid(),
-        date: document.getElementById('attDate').value || toISODate(new Date()),
-        employee: document.getElementById('attEmployee').value,
-        shift: document.getElementById('attShift').value,
-        in: document.getElementById('attIn').value,
-        out: document.getElementById('attOut').value,
-        status: document.getElementById('attStatus').value,
-        obs: document.getElementById('attObs').value
-      };
-      if (!item.employee || !item.shift) return toast('Completá empleado y turno.');
-      state.attendance.push(item);
-      saveState();
-      ['attIn','attOut','attObs'].forEach(id=>document.getElementById(id).value='');
-      document.getElementById('attFilterDate').value = item.date;
-      refreshUI();
-      toast('Asistencia guardada.');
-    }
-
-    function editAttendance(id) {
-      const a = state.attendance.find(x=>x.id===id);
-      if (!a) return;
-      document.getElementById('attDate').value = a.date;
-      document.getElementById('attEmployee').value = a.employee;
-      document.getElementById('attShift').value = a.shift;
-      document.getElementById('attIn').value = a.in;
-      document.getElementById('attOut').value = a.out;
-      document.getElementById('attStatus').value = a.status;
-      document.getElementById('attObs').value = a.obs;
-      state.attendance = state.attendance.filter(x=>x.id!==id);
-      saveState(); refreshUI(); toast('Asistencia lista para editar. Guardala nuevamente.');
-    }
-
-    function renderTracking() {
-      const start = document.getElementById('weekStart').value || addDaysISO(toISODate(new Date()), -4);
-      const days = Array.from({length:7}, (_,i)=>addDaysISO(start,i));
-      const names = state.employees.filter(e=>e.status!=='Baja' && e.status!=='Administrativo').map(fullName);
-      const headers = ['Empleado', ...days.map(d => formatDate(d)), 'Estado semanal'];
-      let html = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
-      names.forEach((name, idx) => {
-        const statuses = days.map(day => {
-          const a = state.attendance.find(x=>x.employee===name && x.date===day);
-          if (!a) return 'gray';
-          if (a.status === 'Presente' || a.status === 'Horas extra') return 'green';
-          if (a.status === 'Retraso' || a.status === 'Salida anticipada') return 'amber';
-          return 'red';
-        });
-        const red = statuses.filter(s=>s==='red').length;
-        const amber = statuses.filter(s=>s==='amber').length;
-        const status = red > 0 ? 'Revisar' : amber > 1 ? 'Regular' : 'Óptimo';
-        html += `<tr onclick="selectTracking('${escapeHtml(name)}')" style="cursor:pointer;"><td><strong>${escapeHtml(name)}</strong></td>${statuses.map(s=>`<td><span class="status-dot dot-${s}"></span></td>`).join('')}<td>${statusBadge(status)}</td></tr>`;
       });
-      html += `</tbody>`;
-      document.getElementById('trackingTable').innerHTML = html;
-      selectTracking(names[0] || 'Sin empleado');
+
+      const totalAsist = data.presentes + data.ausentes || 1;
+      if(attendanceChart) attendanceChart.destroy();
+      attendanceChart = new Chart(qs('#attendanceChart'), {
+        type:'doughnut',
+        data:{labels:['Presentes','Ausentes'],datasets:[{data:[data.presentes,data.ausentes],backgroundColor:['#22c55e','#ef4444'],borderWidth:0}]},
+        options:{cutout:'70%',plugins:{legend:{position:'right',labels:{usePointStyle:true,boxWidth:10,padding:18, generateLabels(chart){
+          const ds = chart.data.datasets[0];
+          return chart.data.labels.map((l,i)=>({text:`${l} ${(ds.data[i]/totalAsist*100).toFixed(0)}%`,fillStyle:ds.backgroundColor[i],strokeStyle:ds.backgroundColor[i],lineWidth:0,hidden:false,index:i}));
+        }}}}}
+      });
     }
 
-    function selectTracking(name) {
-      const emp = state.employees.find(e=>fullName(e)===name) || state.employees[0];
-      if (!emp) { document.getElementById('trackingDetail').innerHTML = '<div class="empty">Sin empleados cargados.</div>'; return; }
-      const start = document.getElementById('weekStart').value || addDaysISO(toISODate(new Date()), -4);
-      const days = Array.from({length:7}, (_,i)=>addDaysISO(start,i));
-      const att = state.attendance.filter(a => a.employee === fullName(emp) && days.includes(a.date));
-      const present = att.filter(a=>a.status!=='Ausente').length;
-      const status = att.some(a=>a.status==='Ausente') ? 'Revisar' : att.some(a=>a.status==='Retraso' || a.status==='Salida anticipada') ? 'Regular' : 'Óptimo';
-      const initials = `${emp.name?.[0]||''}${emp.last?.[0]||''}`.toUpperCase();
-      document.getElementById('trackingDetail').innerHTML = `<div class="person-head"><div class="avatar">${initials}</div><div><h4>${escapeHtml(fullName(emp))}</h4><p>${escapeHtml(emp.role)} · ${escapeHtml(emp.status)}</p></div></div><div class="detail-row"><span>Sector</span><strong>${escapeHtml(emp.area)}</strong></div><div class="detail-row"><span>Turno</span><strong>${escapeHtml(emp.shift)}</strong></div><div class="detail-row"><span>Estado semanal</span><strong>${statusBadge(status)}</strong></div><div class="detail-row"><span>Asistencia</span><strong>${present}/5 días</strong></div><div class="detail-row"><span>Observación</span><strong>${status === 'Óptimo' ? 'Sin novedades' : 'Revisar registros'}</strong></div>`;
+    function renderDailyTable(){
+      qs('#dailyTableBody').innerHTML = state.draftDailyRows.map(row=>`
+        <tr>
+          <td>${row.line}</td>
+          <td>${Number(row.production).toLocaleString('es-AR')}</td>
+          <td>${Number(row.salt).toLocaleString('es-AR')}</td>
+          <td class="actions-cell">
+            <button class="tiny-btn" data-edit-daily="${row.id}">✎</button>
+            <button class="tiny-btn" data-del-daily="${row.id}">🗑</button>
+          </td>
+        </tr>
+      `).join('');
+      qsa('[data-del-daily]').forEach(btn=>btn.addEventListener('click',()=>{state.draftDailyRows=state.draftDailyRows.filter(r=>r.id!==btn.dataset.delDaily); renderDailyTable(); saveState();}));
+      qsa('[data-edit-daily]').forEach(btn=>btn.addEventListener('click',()=>{
+        const row = state.draftDailyRows.find(r=>r.id===btn.dataset.editDaily); if(!row) return;
+        qs('#dailyLine').value = row.line; qs('#dailyProduction').value = row.production; qs('#dailySalt').value=row.salt;
+        state.draftDailyRows = state.draftDailyRows.filter(r=>r.id!==row.id); renderDailyTable(); saveState();
+      }));
     }
 
-    function renderHistory() {
-      const from = document.getElementById('histFrom').value;
-      const to = document.getElementById('histTo').value;
-      const emp = document.getElementById('histEmployee').value;
-      const sector = document.getElementById('histSector').value;
-      const type = document.getElementById('histType').value;
-      let rows = [];
-      state.production.forEach(p => rows.push({date:p.date, employee:p.employee, sector:p.sector, type:'Producción', desc:`Producción ${number(p.qty)} / Sal ${number(p.salt)}`, user:p.origin || 'Manual'}));
-      state.attendance.forEach(a => rows.push({date:a.date, employee:a.employee, sector:a.shift, type:'Presentismo', desc:`${a.status} · Entrada ${a.in||'-'} / Salida ${a.out||'-'} ${a.obs ? '· ' + a.obs : ''}`, user:'Sistema'}));
-      state.salt.forEach(s => rows.push({date:s.date, employee:s.user || 'Sistema', sector:s.origin, type:'Sal', desc:`${s.type} de ${number(s.qty)}`, user:s.user || 'Sistema'}));
-      state.employees.forEach(e => rows.push({date:e.created || toISODate(new Date()), employee:fullName(e), sector:e.area, type:'Empleado', desc:`${e.role} · ${e.status}`, user:'Sistema'}));
-      if (from) rows = rows.filter(r=>r.date >= from);
-      if (to) rows = rows.filter(r=>r.date <= to);
-      if (emp) rows = rows.filter(r=>r.employee === emp);
-      if (sector) rows = rows.filter(r=>r.sector === sector || r.sector?.includes(sector));
-      if (type) rows = rows.filter(r=>r.type === type);
-      rows.sort((a,b)=>b.date.localeCompare(a.date));
-      document.getElementById('historyCount').textContent = `Mostrando ${rows.length} registros`;
-      document.getElementById('historyTable').innerHTML = `<thead><tr><th>Fecha</th><th>Empleado / Usuario</th><th>Sector / Origen</th><th>Tipo</th><th>Descripción</th><th>Usuario</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${formatDateFull(r.date)}</td><td>${escapeHtml(r.employee)}</td><td>${escapeHtml(r.sector)}</td><td>${statusBadge(r.type)}</td><td>${escapeHtml(r.desc)}</td><td>${escapeHtml(r.user)}</td></tr>`).join('') || `<tr><td colspan="6">Sin registros.</td></tr>`}</tbody>`;
-      window._historyRows = rows;
+    function renderAttendance(){
+      const date = qs('#attendanceFilterDate').value || '2024-05-15';
+      const turno = qs('#attendanceFilterTurn').value || 'Todos';
+      const estado = qs('#attendanceFilterStatus').value || 'Todos';
+      const rows = state.attendance.filter(a => (!date || a.fecha===date) && (turno==='Todos' || a.turno===turno) && (estado==='Todos' || a.estado===estado));
+      qs('#attendanceTableBody').innerHTML = rows.map(a=>`
+        <tr>
+          <td>${employeeFullNameFromId(a.employeeId)}</td>
+          <td>${a.entrada || '—'}</td>
+          <td>${a.salida || '—'}</td>
+          <td>${statusBadge(a.estado)}</td>
+          <td>${a.observacion || '—'}</td>
+        </tr>
+      `).join('');
+
+      const counts = {
+        presentes: rows.filter(r=>r.estado==='Presente').length,
+        ausentes: rows.filter(r=>r.estado==='Ausente').length,
+        retrasos: rows.filter(r=>r.estado==='Retraso').length,
+        anticipadas: rows.filter(r=>r.estado==='Salida anticipada').length
+      };
+      qs('#attendanceSummary').innerHTML = `
+        <div class="title">📊 Resumen del día</div>
+        <div class="summary-count"><div class="n green">${counts.presentes}</div><div class="muted">Presentes</div></div>
+        <div class="summary-count"><div class="n red">${counts.ausentes}</div><div class="muted">Ausentes</div></div>
+        <div class="summary-count"><div class="n" style="color:var(--orange)">${counts.retrasos}</div><div class="muted">Retrasos</div></div>
+        <div class="summary-count"><div class="n blue">${counts.anticipadas}</div><div class="muted">Salidas anticipadas</div></div>
+      `;
     }
 
-    function renderSalt() {
-      const stock = state.salt.reduce((a,s)=> a + (s.type==='Entrada' ? Number(s.qty||0) : -Number(s.qty||0)), 0);
-      const today = toISODate(new Date());
-      const usedToday = state.salt.filter(s=>s.type==='Salida' && s.date===today).reduce((a,s)=>a+Number(s.qty||0),0);
-      const last7 = Array.from({length:7},(_,i)=>addDaysISO(today, -i));
-      const used7 = state.salt.filter(s=>s.type==='Salida' && last7.includes(s.date)).reduce((a,s)=>a+Number(s.qty||0),0);
-      const avg = used7 / 7;
-      const daysLeft = avg > 0 ? Math.max(0, Math.floor(stock / avg)) : 0;
-      document.getElementById('saltKpis').innerHTML = [
-        kpi('Sal disponible', number(stock), 'stock actual', 'salt', stock < 0 ? 'red' : 'blue'),
-        kpi('Sal usada hoy', number(usedToday), 'actualizado hoy', 'salt', 'blue'),
-        kpi('Promedio diario', moneyless(avg), 'últimos 7 días', 'prod', 'blue'),
-        kpi('Días estimados restantes', number(daysLeft), 'con consumo actual', 'alert', daysLeft <= 3 ? 'red' : 'blue')
-      ].join('');
-      document.getElementById('saltTable').innerHTML = `<thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Origen / destino</th><th>Usuario</th><th>Acciones</th></tr></thead><tbody>${state.salt.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>`<tr><td>${formatDateFull(s.date)}</td><td>${statusBadge(s.type)}</td><td><strong class="${s.type==='Entrada'?'green':'red'}">${s.type==='Entrada'?'+':'-'}${number(s.qty)}</strong></td><td>${escapeHtml(s.origin)}</td><td>${escapeHtml(s.user || '-')}</td><td class="actions-cell"><button class="icon-btn" onclick="deleteItem('salt','${s.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="6">Sin movimientos.</td></tr>`}</tbody>`;
+    function statusBadge(status){
+      const map = {
+        'Presente':['success','Presente'],
+        'Ausente':['danger','Ausente'],
+        'Retraso':['warning','Retraso'],
+        'Salida anticipada':['info','Salida anticipada'],
+        'Óptimo':['success','Óptimo'],
+        'Regular':['warning','Regular'],
+        'Revisar':['danger','Revisar'],
+        'Entrada':['success','Entrada'],
+        'Salida':['info','Salida'],
+        'Observación':['soft','Observación'],
+        'Sin datos':['soft','Sin datos / No laborable']
+      };
+      const item = map[status] || ['soft',status];
+      return `<span class="badge ${item[0]}">${item[1]}</span>`;
     }
 
-    function addSaltMove() {
-      const item = { id:uid(), date:document.getElementById('saltDate').value || toISODate(new Date()), type:document.getElementById('saltType').value, qty:Number(document.getElementById('saltQty').value || 0), origin:document.getElementById('saltOrigin').value, user:document.getElementById('saltUser').value || 'Sistema' };
-      if (!item.qty || !item.origin) return toast('Completá cantidad y origen/destino.');
-      state.salt.push(item); saveState(); document.getElementById('saltQty').value=''; refreshUI(); toast('Movimiento de sal guardado.');
+    function renderTracking(){
+      const tbody = qs('#trackingTableBody');
+      tbody.innerHTML = state.tracking.map(row => {
+        const emp = state.employees.find(e=>e.id===row.employeeId) || {};
+        const weekly = weeklyStatus(row.days);
+        return `
+          <tr data-track-row="${row.employeeId}" style="cursor:pointer">
+            <td>${emp.apellido || ''}, ${emp.nombre || ''}</td>
+            ${row.days.map(day=>`<td style="text-align:center">${statusDot(day)}</td>`).join('')}
+            <td>${statusBadge(weekly)}</td>
+          </tr>
+        `;
+      }).join('');
+      qsa('[data-track-row]').forEach(row=>row.addEventListener('click',()=>{state.selectedTrackingEmployeeId=Number(row.dataset.trackRow); renderTrackingPanel(); saveState();}));
+      renderTrackingPanel();
     }
 
-    function renderEmployees() {
-      const search = (document.getElementById('empSearch').value || '').toLowerCase();
-      const status = document.getElementById('empStatusFilter').value;
-      const shift = document.getElementById('empShiftFilter').value;
-      let rows = state.employees.slice();
-      if (search) rows = rows.filter(e => `${fullName(e)} ${e.area} ${e.role}`.toLowerCase().includes(search));
-      if (status) rows = rows.filter(e=>e.status===status);
-      if (shift) rows = rows.filter(e=>e.shift===shift);
-      document.getElementById('employeesTable').innerHTML = `<thead><tr><th>ID</th><th>Nombre</th><th>Área</th><th>Turno</th><th>Rango</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${rows.map((e,i)=>`<tr><td>${String(i+101).padStart(3,'0')}</td><td><strong>${escapeHtml(fullName(e))}</strong></td><td>${escapeHtml(e.area)}</td><td>${escapeHtml(e.shift)}</td><td>${escapeHtml(e.role)}</td><td>${statusBadge(e.status)}</td><td class="actions-cell"><button class="icon-btn" onclick="openEmployeeModal('${e.id}')">✎</button><button class="icon-btn" onclick="toggleEmployeeStatus('${e.id}')">${e.status==='Baja'?'↩':'⊘'}</button><button class="icon-btn" onclick="deleteEmployeeHard('${e.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="7">Sin empleados.</td></tr>`}</tbody>`;
+    function statusDot(status){
+      const colors = { 'Óptimo':'#22c55e', 'Regular':'#f59e0b', 'Revisar':'#ef4444', 'Sin datos':'#d1d5db' };
+      return `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${colors[status]||'#d1d5db'}"></span>`;
+    }
+    function weeklyStatus(days){
+      if(days.includes('Revisar')) return 'Revisar';
+      if(days.includes('Regular')) return 'Regular';
+      return 'Óptimo';
+    }
+    function renderTrackingPanel(){
+      const row = state.tracking.find(r=>r.employeeId===state.selectedTrackingEmployeeId) || state.tracking[0];
+      const emp = state.employees.find(e=>e.id===row.employeeId) || state.employees[0];
+      qs('#trackingEmployeePanel').innerHTML = `
+        <div class="employee-head">
+          <div class="avatar-lg">${(emp.nombre?.[0]||'J')+(emp.apellido?.[0]||'M')}</div>
+          <div>
+            <div style="font-size:20px;font-weight:700">${emp.nombre} ${emp.apellido}</div>
+            <div class="muted" style="margin-top:6px">Legajo ${emp.id}<br>Operario de ${emp.area}</div>
+          </div>
+        </div>
+        <div class="info-list">
+          <div class="info-row"><span>🏭</span><strong>Sector</strong><span>${emp.area} Línea 1</span></div>
+          <div class="info-row"><span>🕒</span><strong>Turno</strong><span>Mañana</span></div>
+          <div class="info-row"><span>🛡</span><strong>Estado semanal</strong><span>${statusBadge(weeklyStatus(row.days))}</span></div>
+          <div class="info-row"><span>🗓</span><strong>Asistencia</strong><span>5/5 días</span></div>
+          <div class="info-row"><span>💬</span><strong>Observación</strong><span>Sin novedades</span></div>
+        </div>
+      `;
     }
 
-    function openEmployeeModal(id='') {
-      const modal = document.getElementById('employeeModal');
-      document.getElementById('empIdEdit').value = id;
-      const e = state.employees.find(x=>x.id===id);
-      document.getElementById('employeeModalTitle').textContent = e ? 'Modificar empleado' : 'Agregar empleado';
-      document.getElementById('empName').value = e?.name || '';
-      document.getElementById('empLast').value = e?.last || '';
-      document.getElementById('empArea').value = e?.area || state.config.sectors[0];
-      document.getElementById('empShift').value = e?.shift || state.config.shifts[0];
-      document.getElementById('empRole').value = e?.role || 'Operario';
-      document.getElementById('empStatus').value = e?.status || 'Activo';
-      modal.classList.add('active');
-    }
-    function closeEmployeeModal(){ document.getElementById('employeeModal').classList.remove('active'); }
-
-    function saveEmployee() {
-      const id = document.getElementById('empIdEdit').value;
-      const item = { id: id || uid(), name:document.getElementById('empName').value.trim(), last:document.getElementById('empLast').value.trim(), area:document.getElementById('empArea').value, shift:document.getElementById('empShift').value, role:document.getElementById('empRole').value, status:document.getElementById('empStatus').value, created: toISODate(new Date()) };
-      if (!item.name || !item.last) return toast('Completá nombre y apellido.');
-      if (id) state.employees = state.employees.map(e=>e.id===id ? { ...e, ...item, created:e.created } : e);
-      else state.employees.push(item);
-      saveState(); closeEmployeeModal(); refreshUI(); toast('Empleado guardado.');
-    }
-
-    function toggleEmployeeStatus(id) {
-      const e = state.employees.find(x=>x.id===id); if (!e) return;
-      e.status = e.status === 'Baja' ? 'Activo' : 'Baja';
-      saveState(); refreshUI(); toast(e.status === 'Baja' ? 'Empleado dado de baja.' : 'Empleado restaurado.');
+    function renderHistory(){
+      const from = qs('#historyFrom').value;
+      const to = qs('#historyTo').value;
+      const emp = qs('#historyEmployee').value || 'Todos';
+      const sector = qs('#historySector').value || 'Todos';
+      const tipo = qs('#historyType').value || 'Todos';
+      const rows = state.history.filter(item => {
+        const dt = item.datetime.slice(0,10);
+        return (!from || dt >= from) && (!to || dt <= to) && (emp==='Todos' || item.empleado===emp) && (sector==='Todos' || item.sector===sector) && (tipo==='Todos' || item.tipo===tipo);
+      });
+      qs('#historyTableBody').innerHTML = rows.map(item=>`
+        <tr>
+          <td>${formatDateTime(item.datetime)}</td>
+          <td>${item.empleado}</td>
+          <td>${item.sector}</td>
+          <td>${statusBadge(item.tipo)}</td>
+          <td>${item.descripcion}</td>
+          <td>${item.usuario}</td>
+        </tr>
+      `).join('');
+      qs('#historyCountLabel').textContent = `Mostrando 1 a ${rows.length} de ${rows.length} registros`;
     }
 
-    function deleteEmployeeHard(id) {
-      if (!confirm('¿Eliminar empleado definitivamente? El historial de registros no se borra, pero el empleado sale de la lista.')) return;
-      state.employees = state.employees.filter(e=>e.id!==id); saveState(); refreshUI(); toast('Empleado eliminado de la lista.');
+    function renderSalt(){
+      const avg = averageLastSeven();
+      const daysLeft = avg ? Math.round(state.saltStock / avg) : 0;
+      qs('#saltKpis').innerHTML = [
+        {label:'Sal disponible',value:`${state.saltStock.toLocaleString('es-AR')} kg`,sub:'Stock actual',icon:'🧂'},
+        {label:'Sal usada hoy',value:`${todaySaltUsage().toLocaleString('es-AR')} kg`,sub:'Actualizado 16:00',icon:'⇩'},
+        {label:'Promedio diario',value:`${avg.toLocaleString('es-AR')} kg`,sub:'Últimos 7 días',icon:'📈'},
+        {label:'Días estimados restantes',value:`${daysLeft} días`,sub:'Con consumo actual',icon:'🗓'}
+      ].map(x=>`<div class="kpi-card"><div class="label">${x.label}</div><div class="value">${x.value}</div><div class="sub">${x.sub}</div></div>`).join('');
+      qs('#saltTableBody').innerHTML = state.saltMovements.map(m=>`
+        <tr><td>${formatDateTime(m.datetime)}</td><td>${statusBadge(m.tipo)}</td><td style="font-weight:700;color:${m.cantidad<0?'var(--red)':'var(--green)'}">${m.cantidad>0?'+':''}${m.cantidad}</td><td>${m.origen}</td><td>${m.usuario}</td></tr>
+      `).join('');
+      if(saltChart) saltChart.destroy();
+      const series = getSaltSeries();
+      saltChart = new Chart(qs('#saltChart'), {
+        type:'line',
+        data:{labels:series.labels,datasets:[{data:series.values,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',fill:false,tension:.25,pointRadius:4}]},
+        options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#eef2f7'}}}}
+      });
     }
 
-    function deleteItem(collection, id) {
-      if (!confirm('¿Eliminar este registro?')) return;
-      state[collection] = state[collection].filter(x=>x.id!==id);
-      saveState(); refreshUI(); toast('Registro eliminado.');
+    function todaySaltUsage(){ return state.dailyRecords.reduce((s,r)=>s+Number(r.salt||0),0); }
+    function getSaltSeries(){
+      return {labels:['10/05','11/05','12/05','13/05','14/05','15/05','16/05'], values:[48,44,128,96,58,72,85]};
+    }
+    function averageLastSeven(){
+      const vals = getSaltSeries().values;
+      return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
     }
 
-    function saveConfig() {
-      state.config.sectors = document.getElementById('cfgSectors').value.split('\n').map(x=>x.trim()).filter(Boolean);
-      state.config.shifts = document.getElementById('cfgShifts').value.split('\n').map(x=>x.trim()).filter(Boolean);
-      state.config.plants = document.getElementById('cfgPlants').value.split('\n').map(x=>x.trim()).filter(Boolean);
-      saveState(); refreshSelects(); refreshUI(); toast('Configuración guardada.');
+    function renderEmployees(){
+      qs('#employeesTableBody').innerHTML = state.employees.map(emp=>`
+        <tr>
+          <td>${emp.id}</td>
+          <td>${emp.nombre}</td>
+          <td>${emp.apellido}</td>
+          <td>${emp.area}</td>
+          <td>${emp.estado==='Activo' ? '<span class="badge success">Activo</span>' : '<span class="badge soft">Inactivo</span>'}</td>
+          <td class="actions-cell">
+            <button class="tiny-btn" data-edit-emp="${emp.id}">✎</button>
+            <button class="tiny-btn" data-more-emp="${emp.id}">⋯</button>
+          </td>
+        </tr>
+      `).join('');
+      qsa('[data-edit-emp]').forEach(btn=>btn.addEventListener('click',()=>openEmployeeModal(Number(btn.dataset.editEmp))));
+      qsa('[data-more-emp]').forEach(btn=>btn.addEventListener('click',()=>toggleEmployeeState(Number(btn.dataset.moreEmp))));
     }
 
-    function renderConfig() {
-      document.getElementById('cfgSectors').value = state.config.sectors.join('\n');
-      document.getElementById('cfgShifts').value = state.config.shifts.join('\n');
-      document.getElementById('cfgPlants').value = state.config.plants.join('\n');
+    function toggleEmployeeState(id){
+      const emp = state.employees.find(e=>e.id===id); if(!emp) return;
+      emp.estado = emp.estado==='Activo' ? 'Inactivo' : 'Activo';
+      renderEmployees(); saveState();
     }
 
-    function exportCSV(filename, rows) {
-      if (!rows || !rows.length) return toast('No hay datos para exportar.');
-      const headers = Object.keys(rows[0]);
-      const csv = [headers.join(';'), ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g,'""')}"`).join(';'))].join('\n');
-      downloadFile(filename, csv, 'text/csv;charset=utf-8');
+    function populateHistoryEmployees(){
+      const select = qs('#historyEmployee');
+      const names = [...new Set(state.history.map(h=>h.empleado))];
+      select.innerHTML = `<option>Todos</option>` + names.map(n=>`<option>${n}</option>`).join('');
     }
 
-    function exportTable(type) {
-      const map = { production: state.production, attendance: state.attendance, salt: state.salt, employees: state.employees };
-      exportCSV(`${type}_${toISODate(new Date())}.csv`, map[type] || []);
+    function bindStaticEvents(){
+      qs('#menuToggle').addEventListener('click', ()=> qs('#sidebar').classList.toggle('show'));
+      qs('#saveNowBtn').addEventListener('click', ()=> {saveState(); alert('Datos guardados correctamente.');});
+      qs('#refreshDashboardBtn').addEventListener('click', ()=> {renderDashboard(); saveState();});
+
+      qs('#dailyDate').value = '2024-05-15';
+      qs('#attendanceFilterDate').value = '2024-05-15';
+      qs('#historyFrom').value = '2024-04-01';
+      qs('#historyTo').value = '2024-05-16';
+
+      qs('#addDailyRowBtn').addEventListener('click', ()=>{
+        const line = qs('#dailyLine').value;
+        const production = Number(qs('#dailyProduction').value || 0);
+        const salt = Number(qs('#dailySalt').value || 0);
+        if(!production){ alert('Ingresá la producción.'); return; }
+        state.draftDailyRows.push({id:crypto.randomUUID(), line, production, salt});
+        qs('#dailyProduction').value=''; qs('#dailySalt').value='';
+        renderDailyTable(); saveState();
+      });
+
+      qs('#saveDailyBtn').addEventListener('click', ()=>{
+        const date = qs('#dailyDate').value || '2024-05-15';
+        state.dailyRecords = state.draftDailyRows.map(r=>({date, line:r.line, production:r.production, salt:r.salt}));
+        renderDashboard(); renderSalt(); saveState(); alert('Carga diaria guardada.');
+      });
+
+      qs('#applyAttendanceFilterBtn').addEventListener('click', renderAttendance);
+      qs('#applyHistoryBtn').addEventListener('click', renderHistory);
+      qs('#prevWeekBtn').addEventListener('click', ()=>{});
+      qs('#nextWeekBtn').addEventListener('click', ()=>{});
+
+      qs('#exportHistoryBtn').addEventListener('click', ()=>exportCSV('historial.csv', getTableRowsCSV('#historyTableBody', ['Fecha / Hora','Empleado','Sector','Tipo','Descripción','Usuario'])));
+      qs('#exportEmployeesBtn').addEventListener('click', ()=>exportCSV('empleados.csv', state.employees.map(e=>[e.id,e.nombre,e.apellido,e.area,e.estado])));
+      qs('#modifyEmployeeBtn').addEventListener('click', ()=>openEmployeeModal(state.employees[0]?.id));
+      qs('#openEmployeeModalBtn').addEventListener('click', ()=>openEmployeeModal());
+      qs('#deactivateEmployeeBtn').addEventListener('click', ()=>{ if(state.employees[0]) toggleEmployeeState(state.employees[0].id); });
+
+      qs('#closeWhatsModalBtn').addEventListener('click', ()=>toggleModal('whatsModal', false));
+      qs('#openWhatsModalBtn').addEventListener('click', ()=>toggleModal('whatsModal', true));
+      qs('#fillWhatsappExample').addEventListener('click', (e)=>{e.preventDefault(); qs('#whatsText').value=`Fecha: 15/05/2024\nLínea 1: 320000 kg - Sal 6200 kg\nLínea 2: 280000 kg - Sal 5600 kg\nLínea 3: 250000 kg - Sal 5000 kg`; toggleModal('whatsModal', true);});
+      qs('#processWhatsBtn').addEventListener('click', processWhatsappText);
+
+      qs('#closeEmployeeModalBtn').addEventListener('click', ()=>toggleModal('employeeModal', false));
+      qs('#saveEmployeeBtn').addEventListener('click', saveEmployeeFromModal);
+
+      qs('#dailyExcelInput').addEventListener('change', importDailyExcel);
+      qs('#importBackupInput').addEventListener('change', importBackupFile);
+      qs('#importBackupInput2').addEventListener('change', importBackupFile);
+      qs('#exportBackupBtn').addEventListener('click', exportBackup);
+      qs('#exportBackupBtn2').addEventListener('click', exportBackup);
     }
 
-    function exportHistory() { renderHistory(); exportCSV(`historial_${toISODate(new Date())}.csv`, window._historyRows || []); }
+    function processWhatsappText(){
+      const txt = qs('#whatsText').value.trim();
+      if(!txt){ alert('Pegá un mensaje primero.'); return; }
+      const lines = txt.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+      const result = [];
+      const dateMatch = txt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if(dateMatch){ qs('#dailyDate').value = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`; }
+      for(const line of lines){
+        const m = line.match(/(L[ií]nea\s*\d+)[^\d]*(\d+)[^\d]+(\d+)/i);
+        if(m){ result.push({id:crypto.randomUUID(), line:m[1].replace(/í/i,'í'), production:Number(m[2]), salt:Number(m[3])}); }
+      }
+      if(result.length){ state.draftDailyRows = result; renderDailyTable(); saveState(); toggleModal('whatsModal', false); alert('Mensaje procesado correctamente.'); }
+      else alert('No se pudieron detectar líneas, producción y sal.');
+    }
 
-    function exportAllData() { downloadFile(`backup_panel_planta_${toISODate(new Date())}.json`, JSON.stringify(state, null, 2), 'application/json'); }
+    function importDailyExcel(ev){
+      const file = ev.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        const parsed = rows.map((r,i)=>({
+          id: crypto.randomUUID(),
+          line: r['Línea / Sector'] || r['Linea / Sector'] || r['Linea'] || r['Sector'] || `Línea ${i+1}`,
+          production: Number(r['Producción (kg)'] || r['Produccion (kg)'] || r['Produccion'] || r['Producción'] || 0),
+          salt: Number(r['Sal usada (kg)'] || r['Sal'] || r['Sal usada'] || 0)
+        })).filter(r=>r.production || r.salt);
+        if(parsed.length){ state.draftDailyRows = parsed; renderDailyTable(); saveState(); alert('Archivo importado correctamente.'); }
+        else alert('No se encontraron columnas compatibles.');
+      };
+      reader.readAsArrayBuffer(file);
+      ev.target.value='';
+    }
 
-    function downloadFile(name, content, type) {
-      const blob = new Blob([content], { type });
+    function openEmployeeModal(id=null){
+      state.editingEmployeeId = id;
+      const editing = state.employees.find(e=>e.id===id);
+      qs('#employeeModalTitle').textContent = editing ? 'Modificar empleado' : 'Agregar empleado';
+      qs('#empId').value = editing?.id ?? '';
+      qs('#empNombre').value = editing?.nombre ?? '';
+      qs('#empApellido').value = editing?.apellido ?? '';
+      qs('#empArea').value = editing?.area ?? 'Producción';
+      qs('#empEstado').value = editing?.estado ?? 'Activo';
+      toggleModal('employeeModal', true);
+    }
+
+    function saveEmployeeFromModal(){
+      const emp = {
+        id:Number(qs('#empId').value),
+        nombre:qs('#empNombre').value.trim(),
+        apellido:qs('#empApellido').value.trim(),
+        area:qs('#empArea').value,
+        estado:qs('#empEstado').value
+      };
+      if(!emp.id || !emp.nombre || !emp.apellido){ alert('Completá ID, nombre y apellido.'); return; }
+      if(state.editingEmployeeId){
+        const idx = state.employees.findIndex(e=>e.id===state.editingEmployeeId);
+        if(idx>=0) state.employees[idx]=emp;
+      }else{
+        state.employees.push(emp);
+      }
+      populateHistoryEmployees();
+      renderEmployees(); saveState(); toggleModal('employeeModal', false);
+    }
+
+    function toggleModal(id, show){ qs('#'+id).classList.toggle('show', show); }
+
+    function exportCSV(filename, rows){
+      const csv = Array.isArray(rows[0]) ? rows.map(r=>r.map(cell=>`"${String(cell).replaceAll('"','""')}"`).join(',')).join('\n') : rows;
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = name; a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+    }
+    function getTableRowsCSV(selector, headers){
+      const rows = [headers];
+      qsa(selector + ' tr').forEach(tr=>{
+        rows.push([...tr.children].map(td=>td.innerText.replace(/\n/g,' ').trim()));
+      });
+      return rows;
     }
 
-    async function restoreBackup(event) {
-      const file = event.target.files[0]; if (!file) return;
-      try {
-        const text = await file.text();
-        const parsed = JSON.parse(text);
-        if (!parsed.employees || !parsed.production) throw new Error('Backup inválido');
-        state = parsed; saveState(); refreshSelects(); refreshUI(); toast('Backup restaurado.');
-      } catch (e) { toast('El archivo no parece ser un backup válido.'); }
-      event.target.value = '';
+    function exportBackup(){
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='backup_panel_integral_planta.json'; a.click(); URL.revokeObjectURL(url);
+    }
+    function importBackupFile(ev){
+      const file = ev.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try{
+          state = {...structuredClone(defaultState), ...JSON.parse(e.target.result)};
+          initialize();
+          alert('Backup importado correctamente.');
+        }catch(err){ alert('No se pudo importar el backup.'); console.error(err); }
+      };
+      reader.readAsText(file);
+      ev.target.value='';
     }
 
-    function resetDemoConfirm() {
-      if (!confirm('¿Eliminar la base actual y volver a datos de ejemplo?')) return;
-      state = defaultState(); saveState(); init(); toast('Base reiniciada con ejemplo.');
+    function initialize(){
+      renderNav();
+      populateHistoryEmployees();
+      renderDashboard();
+      renderDailyTable();
+      renderAttendance();
+      renderTracking();
+      renderHistory();
+      renderSalt();
+      renderEmployees();
+      switchPage(state.currentPage || 'dashboard');
+      qs('#lastUpdateLabel').textContent = formatDateTime(state.lastUpdate || new Date().toISOString());
+      saveState();
     }
 
-    function refreshUI() {
-      renderDashboard(); renderProduction(); renderAttendance(); renderTracking(); renderHistory(); renderSalt(); renderEmployees(); renderConfig(); renderCharts();
-    }
-
-    function init() {
-      setDefaults(); refreshSelects(); renderConfig(); refreshUI();
-    }
-
-    init();
+    bindStaticEvents();
+    initialize();
   </script>
 </body>
 </html>
