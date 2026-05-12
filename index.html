@@ -9,21 +9,35 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;min-height:100vh;color:#1e293b;}
-input,select,button,textarea{font-family:inherit;}
-input:focus,select:focus,textarea:focus{outline:2px solid #6366f1;outline-offset:1px;}
-button:active{transform:scale(0.98);}
-::-webkit-scrollbar{width:7px;height:7px;}
-::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:999px;}
-.row-hover:hover td{background:rgba(99,102,241,.04)!important;}
-.tab-btn:hover{background:rgba(255,255,255,.12)!important;}
-mark{background:#fef08a;border-radius:2px;padding:0 1px;}
-@media (max-width:900px){
-  body{font-size:14px;}
-  table{font-size:12px;}
+:root{
+  --blue:#2563EB;--blue-dark:#1D4ED8;--blue-light:#EFF6FF;--blue-mid:#BFDBFE;
+  --slate-50:#F8FAFC;--slate-100:#F1F5F9;--slate-200:#E2E8F0;--slate-300:#CBD5E1;
+  --slate-400:#94A3B8;--slate-500:#64748B;--slate-600:#475569;--slate-700:#334155;
+  --slate-800:#1E293B;--slate-900:#0F172A;
+  --green:#10B981;--green-light:#D1FAE5;--green-dark:#047857;
+  --amber:#F59E0B;--amber-light:#FEF3C7;--amber-dark:#92400E;
+  --red:#F43F5E;--red-light:#FFE4E6;--red-dark:#9F1239;
+  --sidebar-w:220px;
 }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--slate-50);min-height:100vh;color:var(--slate-800);}
+input,select,button,textarea{font-family:inherit;}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;}
+button:active{transform:scale(0.98);}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-thumb{background:var(--slate-300);border-radius:999px;}
+::-webkit-scrollbar-track{background:transparent;}
+.row-hover:hover td{background:var(--blue-light)!important;}
+mark{background:#fef08a;border-radius:2px;padding:0 1px;}
+.sidebar-nav-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;border:none;background:transparent;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;cursor:pointer;text-align:left;width:100%;transition:background .15s,color .15s;}
+.sidebar-nav-btn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);}
+.sidebar-nav-btn.active{background:var(--blue);color:#fff;font-weight:700;}
+.matrix-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
+@media(max-width:900px){body{font-size:14px;}table{font-size:12px;}}
 </style>
 </head>
 <body>
@@ -580,14 +594,15 @@ const ETYPES=['Operario','Supervisor','Administrativo','Mantenimiento','Otro'];
 
 /* ────────── COLORS ────────── */
 const C={
-  indigo:'#6366f1',indigoD:'#4338ca',indigoL:'#e0e7ff',
-  violet:'#8b5cf6',violetD:'#6d28d9',violetL:'#ede9fe',
-  emerald:'#10b981',emeraldD:'#047857',emeraldL:'#d1fae5',
-  amber:'#f59e0b',amberD:'#92400e',amberL:'#fef3c7',
-  rose:'#f43f5e',roseD:'#9f1239',roseL:'#ffe4e6',
-  sky:'#0ea5e9',skyD:'#0369a1',skyL:'#e0f2fe',
-  orange:'#f97316',orangeD:'#9a3412',orangeL:'#ffedd5',
-  s50:'#f8fafc',s100:'#f1f5f9',s200:'#e2e8f0',s300:'#cbd5e1',s400:'#94a3b8',s500:'#64748b',s600:'#475569',s700:'#334155',s800:'#1e293b',s900:'#0f172a',white:'#ffffff'
+  blue:'#2563EB',blueD:'#1D4ED8',blueL:'#EFF6FF',blueMid:'#BFDBFE',
+  indigo:'#2563EB',indigoD:'#1D4ED8',indigoL:'#EFF6FF',
+  violet:'#7C3AED',violetD:'#5B21B6',violetL:'#EDE9FE',
+  emerald:'#10B981',emeraldD:'#047857',emeraldL:'#D1FAE5',
+  amber:'#F59E0B',amberD:'#92400E',amberL:'#FEF3C7',
+  rose:'#F43F5E',roseD:'#9F1239',roseL:'#FFE4E6',
+  sky:'#0EA5E9',skyD:'#0369A1',skyL:'#E0F2FE',
+  orange:'#F97316',orangeD:'#9A3412',orangeL:'#FFEDD5',
+  s50:'#F8FAFC',s100:'#F1F5F9',s200:'#E2E8F0',s300:'#CBD5E1',s400:'#94A3B8',s500:'#64748B',s600:'#475569',s700:'#334155',s800:'#1E293B',s900:'#0F172A',white:'#FFFFFF'
 };
 const CHART_COLORS=['#6366f1','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0ea5e9'];
 
@@ -612,10 +627,10 @@ function KPI({label,value,bg,color,icon,sub}){
 }
 function DataTable({headers,rows,searchQ=''}){
   function hl(text){if(!searchQ||text===null||text===undefined)return text;const s=String(text);const idx=s.toLowerCase().indexOf(searchQ.toLowerCase());if(idx<0)return s;return <>{s.slice(0,idx)}<mark>{s.slice(idx,idx+searchQ.length)}</mark>{s.slice(idx+searchQ.length)}</>;}
-  return <div style={{overflowX:'auto',borderRadius:'12px',border:`1px solid ${C.s200}`,boxShadow:'0 1px 3px rgba(0,0,0,.04)'}}>
+  return <div style={{overflowX:'auto',borderRadius:'10px',border:`1px solid ${C.s200}`}}>
     <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
-      <thead><tr style={{background:`linear-gradient(90deg,${C.indigoL},${C.violetL})`}}>{headers.map((h,i)=><th key={i} style={{padding:'10px 13px',textAlign:'left',fontWeight:700,color:C.indigoD,whiteSpace:'nowrap',borderBottom:`1px solid ${C.s200}`,fontSize:'12px'}}>{h}</th>)}</tr></thead>
-      <tbody>{rows.length===0?<tr><td colSpan={headers.length} style={{padding:'28px',textAlign:'center',color:C.s400,fontSize:'13px'}}>Sin datos para mostrar</td></tr>:rows.map((row,ri)=><tr key={ri} className='row-hover' style={{borderBottom:`1px solid ${C.s100}`,background:ri%2===0?C.white:C.s50}}>{row.map((cell,ci)=><td key={ci} style={{padding:'10px 13px',color:C.s700,whiteSpace:'nowrap'}}>{typeof cell==='string'?hl(cell):cell}</td>)}</tr>)}</tbody>
+      <thead><tr style={{background:C.s50,borderBottom:`2px solid ${C.s200}`}}>{headers.map((h,i)=><th key={i} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:C.s500,whiteSpace:'nowrap',fontSize:'12px',letterSpacing:'0.03em',textTransform:'uppercase'}}>{h}</th>)}</tr></thead>
+      <tbody>{rows.length===0?<tr><td colSpan={headers.length} style={{padding:'32px',textAlign:'center',color:C.s400,fontSize:'13px'}}>Sin datos para mostrar</td></tr>:rows.map((row,ri)=><tr key={ri} className='row-hover' style={{borderBottom:`1px solid ${C.s100}`,background:C.white}}>{row.map((cell,ci)=><td key={ci} style={{padding:'11px 14px',color:C.s700,whiteSpace:'nowrap'}}>{typeof cell==='string'?hl(cell):cell}</td>)}</tr>)}</tbody>
     </table>
   </div>;
 }
@@ -624,13 +639,13 @@ function Inp(props){return <input {...props} style={{width:'100%',padding:'8px 1
 function DateInp({value,onChange,min,max,...props}){return <Inp {...props} type='date' value={toInputDate(value)} min={min?toInputDate(min):undefined} max={max?toInputDate(max):undefined} onChange={e=>onChange&&onChange({target:{value:fromInputDate(e.target.value,value)}})}/>;}
 function Txt(props){return <textarea {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',minHeight:'84px',resize:'vertical',...(props.style||{})}}/>;}
 function Sel({children,...props}){return <select {...props} style={{width:'100%',padding:'8px 11px',borderRadius:'8px',border:`1px solid ${C.s300}`,background:C.white,color:C.s800,fontSize:'13px',boxSizing:'border-box',...(props.style||{})}}>{children}</select>;}
-function BtnP({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'9px',border:'none',background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:C.white,fontSize:'13px',fontWeight:700,cursor:'pointer',boxShadow:'0 2px 8px rgba(99,102,241,.35)',display:'flex',alignItems:'center',gap:'7px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
-function BtnN({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'9px',border:`1px solid ${C.s300}`,background:C.white,color:C.s700,fontSize:'13px',fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
+function BtnP({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'8px',border:'none',background:C.blue,color:C.white,fontSize:'13px',fontWeight:600,cursor:'pointer',boxShadow:'0 1px 3px rgba(37,99,235,.25)',display:'flex',alignItems:'center',gap:'7px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
+function BtnN({children,...props}){return <button {...props} style={{padding:'9px 18px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.white,color:C.s700,fontSize:'13px',fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',whiteSpace:'nowrap',...(props.style||{})}}>{children}</button>;}
 function BtnD({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.rose}`,background:'transparent',color:C.rose,fontSize:'12px',fontWeight:700,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
-function BtnS({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.s300}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:600,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
-function SecH({title,subtitle,right}){return <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:'12px',marginBottom:'20px'}}><div><div style={{fontSize:'18px',fontWeight:800,color:C.indigoD,letterSpacing:'-0.02em'}}>{title}</div>{subtitle&&<div style={{fontSize:'13px',color:C.s500,marginTop:'3px'}}>{subtitle}</div>}</div>{right&&<div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>{right}</div>}</div>;}
-function Card({children,style={}}){return <div style={{background:C.white,borderRadius:'16px',border:`1px solid ${C.s200}`,padding:'1.25rem',boxShadow:'0 1px 4px rgba(0,0,0,.06)',...style}}>{children}</div>;}
-function CardTitle({children,color}){return <div style={{fontSize:'14px',fontWeight:800,color:color||C.indigoD,marginBottom:'14px',paddingBottom:'10px',borderBottom:`2px solid ${C.indigoL}`}}>{children}</div>;}
+function BtnS({children,...props}){return <button {...props} style={{padding:'5px 11px',borderRadius:'7px',border:`1px solid ${C.s200}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:600,cursor:'pointer',...(props.style||{})}}>{children}</button>;}
+function SecH({title,subtitle,right}){return <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:'12px',marginBottom:'20px'}}><div><div style={{fontSize:'18px',fontWeight:800,color:C.s800,letterSpacing:'-0.02em'}}>{title}</div>{subtitle&&<div style={{fontSize:'13px',color:C.s500,marginTop:'3px'}}>{subtitle}</div>}</div>{right&&<div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>{right}</div>}</div>;}
+function Card({children,style={}}){return <div style={{background:C.white,borderRadius:'12px',border:`1px solid ${C.s200}`,padding:'1.25rem',boxShadow:'0 1px 3px rgba(0,0,0,.04)',...style}}>{children}</div>;}
+function CardTitle({children,color}){return <div style={{fontSize:'12px',fontWeight:700,color:color||C.s500,marginBottom:'14px',paddingBottom:'10px',borderBottom:`1px solid ${C.s200}`,textTransform:'uppercase',letterSpacing:'0.06em'}}>{children}</div>;}
 function SLabel({children}){return <div style={{fontSize:'12px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'10px'}}>{children}</div>;}
 
 /* ────────── CHARTS ────────── */
@@ -1000,6 +1015,9 @@ function App(){
   const [records,setRecords]=useState(()=>lsGet(SK.r,IREC).map(normalizeLoadedRecord));
   const [saltMoves,setSaltMoves]=useState(()=>lsGet(SK.s,[]).map(normalizeLoadedSaltMove));
   const [tab,setTab]=useState('DASHBOARD_HOY');
+  const [sidebarOpen,setSidebarOpen]=useState(false);
+  const [matrixEmpSelected,setMatrixEmpSelected]=useState(null);
+  const [matrixWeekOffset,setMatrixWeekOffset]=useState(0);
   const [showEmpImport,setShowEmpImport]=useState(false);
   const [showAttendanceImport,setShowAttendanceImport]=useState(false);
   const [showDailyImport,setShowDailyImport]=useState(false);
@@ -1102,6 +1120,31 @@ function App(){
   },[records]);
   const weeklyFiltered=useMemo(()=>weekFilter==='Todas'?weekly:weekly.filter(w=>String(w.semana)===String(weekFilter)),[weekly,weekFilter]);
   const weeklyGrouped=useMemo(()=>{const groups={};weeklyFiltered.forEach(it=>{groups[it.semana]=groups[it.semana]||[];groups[it.semana].push(it);});return Object.entries(groups).sort((a,b)=>Number(b[0])-Number(a[0]));},[weeklyFiltered]);
+
+  const matrixWeekDates=useMemo(()=>{
+    const today=new Date();
+    const dow=today.getDay();
+    const monday=new Date(today);
+    monday.setDate(today.getDate()-((dow===0?7:dow)-1)+matrixWeekOffset*7);
+    monday.setHours(12,0,0,0);
+    return Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return {fecha:formatDateShort(d),d};});
+  },[matrixWeekOffset]);
+
+  const matrixData=useMemo(()=>{
+    return sortByName(activeEmployees).map(emp=>{
+      const dayRecs=matrixWeekDates.map(({fecha})=>records.find(r=>r.fecha===fecha&&String(r.legajo)===String(emp.legajo))||null);
+      const validRecs=dayRecs.filter(Boolean);
+      const pres=validRecs.filter(r=>['Presente','Tarde','Media jornada'].includes(r.estadoDia)).length;
+      const prog=validRecs.filter(r=>!['Franco','Licencia','Vacaciones'].includes(r.estadoDia)).length;
+      const asistPct=prog?Math.round((pres/prog)*100):0;
+      const operRecs=validRecs.filter(r=>r.tipoEmpleado==='Operario'&&r.metaDiaria>0);
+      const avgRend=operRecs.length?Math.round(operRecs.reduce((a,r)=>a+r.cumplimiento,0)/operRecs.length):null;
+      const puntajes=validRecs.filter(r=>r.puntajeFinal!==null).map(r=>r.puntajeFinal);
+      const avgPuntaje=puntajes.length?Math.round(puntajes.reduce((a,v)=>a+v,0)/puntajes.length):null;
+      const estSemanal=validRecs.length===0?'SIN_DATOS':semColor(avgPuntaje,emp.tipoEmpleado,asistPct===0?'Ausente':'Presente');
+      return {emp,dayRecs,asistPct,avgRend,estSemanal,prog,pres,totalDias:validRecs.length};
+    });
+  },[activeEmployees,records,matrixWeekDates]);
 
   const fichaEmp=useMemo(()=>employees.find(e=>e.legajo===fichaLeg)||null,[employees,fichaLeg]);
   const fichaRecs=useMemo(()=>records.filter(r=>r.legajo===fichaLeg).sort((a,b)=>a.fecha.localeCompare(b.fecha)),[records,fichaLeg]);
@@ -1429,15 +1472,15 @@ function App(){
   const dailyPreview=selectedDailyEmployee?computeRecord({employee:selectedDailyEmployee,fecha:dailyForm.fecha,estadoDia:records.find(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?.estadoDia||'Presente',entrada:records.find(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?.entrada||'',salida:records.find(r=>r.fecha===dailyForm.fecha&&r.legajo===dailyForm.legajo)?.salida||'',produccionReal:Number(dailyForm.produccionReal||0),calidad:dailyForm.calidad,observaciones:dailyForm.observaciones}):null;
 
   const TABS=[
-    {id:'DASHBOARD_HOY',icon:'📊',label:'Dashboard'},
-    {id:'PRESENTISMO',icon:'🟢',label:'Presentismo'},
-    {id:'CARGA_DIARIA',icon:'📝',label:'Carga diaria'},
-    {id:'SAL',icon:'🧂',label:'Sal'},
-    {id:'BASE_GENERAL',icon:'🗃️',label:'Base general'},
-    {id:'SEGUIMIENTO',icon:'📈',label:'Seguimiento'},
-    {id:'FICHA_OPERARIO',icon:'👤',label:'Ficha'},
-    {id:'HISTORIAL',icon:'🕘',label:'Historial'},
-    {id:'ADMIN_PERSONAL',icon:'⚙️',label:'Personal'}
+    {id:'DASHBOARD_HOY',icon:'⊞',label:'Dashboard'},
+    {id:'CARGA_DIARIA',icon:'✏',label:'Carga diaria'},
+    {id:'PRESENTISMO',icon:'✓',label:'Presentismo'},
+    {id:'SEGUIMIENTO',icon:'◈',label:'Seguimiento'},
+    {id:'HISTORIAL',icon:'◷',label:'Historial'},
+    {id:'SAL',icon:'◬',label:'Sal'},
+    {id:'BASE_GENERAL',icon:'▦',label:'Base general'},
+    {id:'FICHA_OPERARIO',icon:'◉',label:'Ficha'},
+    {id:'ADMIN_PERSONAL',icon:'⚙',label:'Personal'}
   ];
 
   function exportFullWorkbook(){
@@ -1601,40 +1644,72 @@ function App(){
   }
 
 
-  return <div style={{fontFamily:'system-ui,sans-serif',minHeight:'100vh',background:C.s100}}>
+  return <div style={{display:'flex',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif",background:C.s50}}>
     {showEmpImport&&<ImportEmpModal onClose={()=>setShowEmpImport(false)} onImport={importEmployees} existingEmployees={employees}/>}
     {showAttendanceImport&&<ImportAttendanceModal onClose={()=>setShowAttendanceImport(false)} onImport={rows=>{importAttendance(rows);setShowAttendanceImport(false);}} employees={activeEmployees}/>}
     {showDailyImport&&<ImportDailyModal onClose={()=>setShowDailyImport(false)} onImport={rows=>{importProduction(rows);setShowDailyImport(false);}} employees={activeEmployees}/>}
 
-    <div style={{background:`linear-gradient(135deg,${C.s900} 0%,${C.indigoD} 100%)`,boxShadow:'0 4px 20px rgba(0,0,0,.25)'}}>
-      <div style={{padding:isMobile?'12px 12px 0':'14px 20px 0',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'10px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-          <div style={{width:'42px',height:'42px',borderRadius:'11px',background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',boxShadow:'0 3px 12px rgba(99,102,241,.5)'}}>🏭</div>
-          <div><div style={{fontSize:'17px',fontWeight:800,color:C.white,letterSpacing:'-0.02em'}}>Control de planta y performance</div><div style={{fontSize:'11px',color:'rgba(255,255,255,.45)',marginTop:'1px'}}>Presentismo separado · Producción · Historial · Personal activo/baja</div></div>
-        </div>
-        <div style={{flex:isMobile?'1 1 100%':'1',maxWidth:isMobile?'100%':'320px',minWidth:isMobile?'100%':'200px',position:'relative'}}>
-          <span style={{position:'absolute',left:'10px',top:'50%',transform:'translateY(-50%)',color:'rgba(255,255,255,.5)',fontSize:'14px'}}>🔍</span>
-          <input value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)} placeholder='Buscar empleado, fecha, sector...' style={{width:'100%',padding:'8px 11px 8px 32px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.1)',color:C.white,fontSize:'13px',boxSizing:'border-box'}}/>
-          {globalSearch&&<button onClick={()=>setGlobalSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,.6)',cursor:'pointer',fontSize:'14px'}}>×</button>}
-        </div>
-        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
-          <input ref={fullReportInputRef} type='file' accept='.xlsx,.xls' style={{display:'none'}} onChange={e=>importFullWorkbookFile(e.target.files?.[0])}/>
-          <BtnP onClick={()=>setShowEmpImport(true)}>📥 Empleados</BtnP>
-          <button onClick={()=>fullReportInputRef.current?.click()} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.32)',background:'rgba(255,255,255,.18)',color:C.white,fontSize:'13px',fontWeight:700,cursor:'pointer'}}>📘 Leer Excel completo</button>
-          <button onClick={exportFullWorkbook} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.32)',background:'rgba(255,255,255,.08)',color:C.white,fontSize:'13px',fontWeight:700,cursor:'pointer'}}>⬇️ Informe completo</button>
-          <button onClick={()=>exportCsv('base_general.csv',['Fecha','Semana','Legajo','Nombre','Sector','Turno','Tipo','Estado','Entrada','Salida','Horas','Producción','Meta','% Cumpl.','Calidad','Puntaje','Semáforo','Observaciones'],records.map(r=>[fmtDate(r.fecha),r.semana,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.entrada,r.salida,r.horas,r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.puntajeFinal,r.semaforo,r.observaciones]))} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(255,255,255,.25)',background:'transparent',color:'rgba(255,255,255,.85)',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>⬇️ CSV</button>
-          <button onClick={clearAll} style={{padding:'8px 13px',borderRadius:'9px',border:'1px solid rgba(244,63,94,.4)',background:'transparent',color:'rgba(244,63,94,.85)',fontSize:'13px',fontWeight:600,cursor:'pointer'}}>Vaciar</button>
+    {/* Mobile overlay */}
+    {isMobile&&sidebarOpen&&<div onClick={()=>setSidebarOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:98}}/>}
+
+    {/* Sidebar */}
+    <aside style={{width:isMobile?(sidebarOpen?'220px':'0'):'220px',flexShrink:0,background:C.s800,display:'flex',flexDirection:'column',position:isMobile?'fixed':'relative',height:'100vh',zIndex:isMobile?99:'auto',overflow:'hidden',transition:'width .2s ease',top:0,left:0}}>
+      {/* Logo */}
+      <div style={{padding:'20px 16px 16px',borderBottom:'1px solid rgba(255,255,255,.08)',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <div style={{width:'36px',height:'36px',borderRadius:'9px',background:C.blue,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',flexShrink:0}}>🏭</div>
+          <div style={{overflow:'hidden',whiteSpace:'nowrap'}}>
+            <div style={{color:C.white,fontWeight:800,fontSize:'14px',lineHeight:1.2}}>Control Planta</div>
+            <div style={{color:'rgba(255,255,255,.4)',fontWeight:400,fontSize:'11px',marginTop:'2px'}}>Panel de gestión</div>
+          </div>
         </div>
       </div>
-      <div style={{display:'flex',gap:'2px',padding:isMobile?'10px 12px 0':'10px 20px 0',overflowX:'auto'}}>{TABS.map(t=><button key={t.id} className='tab-btn' onClick={()=>setTab(t.id)} style={{padding:'9px 16px',fontSize:'13px',fontWeight:tab===t.id?700:500,color:tab===t.id?C.white:'rgba(255,255,255,.5)',background:tab===t.id?'rgba(255,255,255,.15)':'transparent',border:'none',borderRadius:'9px 9px 0 0',cursor:'pointer',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:'6px',borderBottom:tab===t.id?'3px solid #818cf8':'3px solid transparent'}}><span style={{fontSize:'14px'}}>{t.icon}</span>{t.label}</button>)}</div>
-    </div>
 
-    {globalSearch&&<div style={{background:C.white,border:`1px solid ${C.indigoL}`,borderRadius:'0 0 16px 16px',margin:isMobile?'0 12px':'0 20px',boxShadow:'0 8px 24px rgba(99,102,241,.15)',padding:'16px',position:'relative',zIndex:10}}>
-      <div style={{fontSize:'12px',fontWeight:700,color:C.indigoD,marginBottom:'10px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Resultados rápidos — {searchedRecords.length}</div>
-      <DataTable headers={['Fecha','Legajo','Nombre','Sector','Estado','Producción','Semáforo']} rows={searchedRecords.slice(0,20).map(r=>[fmtDate(r.fecha),r.legajo,r.nombre,r.sector,<StatusBadge key={r.id+'s'} value={r.estadoDia}/>,r.produccionReal,<Badge key={r.id+'b'} value={r.semaforo}/>])} searchQ={globalSearch}/>
-    </div>}
+      {/* Navigation */}
+      <nav style={{flex:1,padding:'10px 8px',display:'flex',flexDirection:'column',gap:'2px',overflowY:'auto'}}>
+        {TABS.map(t=><button key={t.id} className={`sidebar-nav-btn${tab===t.id?' active':''}`} onClick={()=>{setTab(t.id);if(isMobile)setSidebarOpen(false);}}>
+          <span style={{fontSize:'15px',flexShrink:0}}>{t.icon}</span>
+          <span style={{overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{t.label}</span>
+          {tab===t.id&&<span style={{marginLeft:'auto',width:'4px',height:'4px',borderRadius:'50%',background:C.white}}/>}
+        </button>)}
+      </nav>
 
-    <div style={{padding:isMobile?'12px':'24px',maxWidth:'1500px',margin:'0 auto'}}>
+      {/* Bottom actions */}
+      <div style={{padding:'12px',borderTop:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',gap:'6px',flexShrink:0}}>
+        <button onClick={()=>fullReportInputRef.current?.click()} style={{width:'100%',padding:'8px 10px',borderRadius:'8px',border:'1px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.8)',fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left'}}>📘 Leer Excel</button>
+        <button onClick={exportFullWorkbook} style={{width:'100%',padding:'8px 10px',borderRadius:'8px',border:'1px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.8)',fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left'}}>⬇ Informe completo</button>
+        <button onClick={clearAll} style={{width:'100%',padding:'8px 10px',borderRadius:'8px',border:'1px solid rgba(244,63,94,.3)',background:'transparent',color:'rgba(244,63,94,.7)',fontSize:'12px',fontWeight:500,cursor:'pointer',textAlign:'left'}}>✕ Vaciar datos</button>
+      </div>
+    </aside>
+
+    {/* Main area */}
+    <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden'}}>
+
+      {/* Top bar */}
+      <header style={{background:C.white,borderBottom:`1px solid ${C.s200}`,padding:'0 20px',height:'56px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0,boxShadow:'0 1px 3px rgba(0,0,0,.04)'}}>
+        {isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{padding:'6px 10px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:'transparent',cursor:'pointer',fontSize:'16px',color:C.s600}}>☰</button>}
+        <div style={{fontWeight:700,color:C.s800,fontSize:'15px',flexShrink:0}}>{TABS.find(t=>t.id===tab)?.label||'Dashboard'}</div>
+        <div style={{flex:1}}/>
+        <div style={{position:'relative',width:isMobile?'100%':'280px'}}>
+          <span style={{position:'absolute',left:'10px',top:'50%',transform:'translateY(-50%)',color:C.s400,fontSize:'14px'}}>🔍</span>
+          <input value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)} placeholder='Buscar...' style={{width:'100%',padding:'7px 11px 7px 32px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.s50,color:C.s800,fontSize:'13px',boxSizing:'border-box'}}/>
+          {globalSearch&&<button onClick={()=>setGlobalSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:C.s400,cursor:'pointer',fontSize:'14px'}}>×</button>}
+        </div>
+        <input ref={fullReportInputRef} type='file' accept='.xlsx,.xls' style={{display:'none'}} onChange={e=>importFullWorkbookFile(e.target.files?.[0])}/>
+        {!isMobile&&<>
+          <BtnP onClick={()=>setShowEmpImport(true)} style={{padding:'7px 14px'}}>📥 Empleados</BtnP>
+          <button onClick={()=>exportCsv('base_general.csv',['Fecha','Semana','Legajo','Nombre','Sector','Turno','Tipo','Estado','Entrada','Salida','Horas','Producción','Meta','% Cumpl.','Calidad','Puntaje','Semáforo','Observaciones'],records.map(r=>[fmtDate(r.fecha),r.semana,r.legajo,r.nombre,r.sector,r.turno,r.tipoEmpleado,r.estadoDia,r.entrada,r.salida,r.horas,r.produccionReal,r.metaDiaria,`${r.cumplimiento}%`,r.calidad,r.puntajeFinal,r.semaforo,r.observaciones]))} style={{padding:'7px 12px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:'transparent',color:C.s600,fontSize:'12px',fontWeight:600,cursor:'pointer'}}>⬇ CSV</button>
+        </>}
+      </header>
+
+      {/* Search results dropdown */}
+      {globalSearch&&<div style={{background:C.white,borderBottom:`1px solid ${C.s200}`,padding:'16px 20px',boxShadow:'0 4px 12px rgba(0,0,0,.08)',position:'relative',zIndex:10}}>
+        <div style={{fontSize:'12px',fontWeight:700,color:C.s500,marginBottom:'10px',textTransform:'uppercase',letterSpacing:'0.05em'}}>Resultados — {searchedRecords.length}</div>
+        <DataTable headers={['Fecha','Legajo','Nombre','Sector','Estado','Producción','Semáforo']} rows={searchedRecords.slice(0,20).map(r=>[fmtDate(r.fecha),r.legajo,r.nombre,r.sector,<StatusBadge key={r.id+'s'} value={r.estadoDia}/>,r.produccionReal,<Badge key={r.id+'b'} value={r.semaforo}/>])} searchQ={globalSearch}/>
+      </div>}
+
+      {/* Content */}
+      <main style={{flex:1,overflowY:'auto',padding:isMobile?'16px':'24px 28px'}}>
       {tab==='DASHBOARD_HOY'&&<div>
         <SecH title='Dashboard' subtitle='Elegí un rango de fechas para ver promedios, gráficos ampliados y el detalle separado por día.' right={<>
           <DateInp value={dashboardRange.desde} onChange={e=>setDashboardRange(p=>({...p,desde:e.target.value}))} style={{width:'160px'}}/>
@@ -2014,110 +2089,181 @@ function App(){
       </div>}
 
       {tab==='SEGUIMIENTO'&&(()=>{
-        const semColor2=(s)=>s==='VERDE'?C.emerald:s==='AMARILLO'?C.amber:s==='ROJO'?C.rose:C.s300;
-        const semBg=(s)=>s==='VERDE'?C.emeraldL:s==='AMARILLO'?C.amberL:s==='ROJO'?C.roseL:C.s100;
-        const semText=(s)=>s==='VERDE'?C.emeraldD:s==='AMARILLO'?C.amberD:s==='ROJO'?C.roseD:C.s500;
-        const rendColor=(v)=>v>=85?C.emeraldD:v>=70?C.amberD:C.roseD;
-        const rendBg=(v)=>v>=85?C.emerald:v>=70?C.amber:C.rose;
+        const DIAS_SHORT=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+        const dotStyle=(rec)=>{
+          if(!rec)return {dot:C.s300,ring:C.s100,tooltip:'Sin registro'};
+          const s=rec.estadoDia;
+          if(s==='Franco'||s==='Licencia'||s==='Vacaciones')return {dot:C.sky,ring:C.skyL,tooltip:s};
+          if(s==='Ausente')return {dot:C.rose,ring:C.roseL,tooltip:'Ausente'};
+          if(rec.semaforo==='VERDE')return {dot:C.emerald,ring:C.emeraldL,tooltip:'Óptimo'};
+          if(rec.semaforo==='AMARILLO')return {dot:C.amber,ring:C.amberL,tooltip:'Regular'};
+          if(rec.semaforo==='ROJO')return {dot:C.rose,ring:C.roseL,tooltip:'Revisar'};
+          return {dot:C.s300,ring:C.s100,tooltip:'Sin datos'};
+        };
+        const estBadge=(est)=>{
+          if(est==='VERDE')return {bg:C.emeraldL,color:C.emeraldD,label:'Óptimo'};
+          if(est==='AMARILLO')return {bg:C.amberL,color:C.amberD,label:'Regular'};
+          if(est==='ROJO')return {bg:C.roseL,color:C.roseD,label:'Revisar'};
+          if(est==='NA')return {bg:C.s100,color:C.s500,label:'N/A'};
+          return {bg:C.s100,color:C.s500,label:'Sin datos'};
+        };
+        const d0=matrixWeekDates[0]?.d; const d6=matrixWeekDates[6]?.d;
+        const weekLabel=d0&&d6?`${d0.getDate()}/${d0.getMonth()+1} – ${d6.getDate()}/${d6.getMonth()+1}/${d6.getFullYear()}`:'';
+        const todayStr=formatDateShort(new Date());
+        const selRow=matrixEmpSelected?matrixData.find(r=>r.emp.legajo===matrixEmpSelected):null;
+        const totalOpt=matrixData.filter(r=>r.estSemanal==='VERDE').length;
+        const totalReg=matrixData.filter(r=>r.estSemanal==='AMARILLO').length;
+        const totalRev=matrixData.filter(r=>r.estSemanal==='ROJO').length;
+        const totalSin=matrixData.filter(r=>r.totalDias===0).length;
         return <div>
-          {/* Header con filtro */}
-          <SecH
-            title='Seguimiento semanal'
-            subtitle='Rendimiento y asistencia por operario, agrupado por semana.'
-            right={<Sel value={weekFilter} onChange={e=>setWeekFilter(e.target.value)} style={{width:'200px'}}>
-              <option value='Todas'>Todas las semanas</option>
-              {allWeeks.map(w=><option key={w} value={w}>Semana {w}</option>)}
-            </Sel>}
-          />
+          {/* Header */}
+          <SecH title='Seguimiento semanal' subtitle='Desempeño día a día. Navegá semanas con las flechas y hacé clic en un empleado para ver su detalle.' right={
+            <div style={{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}>
+              <button onClick={()=>setMatrixWeekOffset(p=>p-1)} style={{width:'34px',height:'34px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.white,cursor:'pointer',fontSize:'18px',color:C.s600,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 1px 3px rgba(0,0,0,.05)'}}>‹</button>
+              <div style={{padding:'7px 18px',borderRadius:'8px',background:C.white,border:`1px solid ${C.s200}`,fontSize:'13px',fontWeight:700,color:C.s700,minWidth:'210px',textAlign:'center',boxShadow:'0 1px 3px rgba(0,0,0,.05)'}}>{weekLabel}</div>
+              <button onClick={()=>setMatrixWeekOffset(p=>p+1)} style={{width:'34px',height:'34px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.white,cursor:'pointer',fontSize:'18px',color:C.s600,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 1px 3px rgba(0,0,0,.05)'}}>›</button>
+              <button onClick={()=>setMatrixWeekOffset(0)} style={{padding:'7px 14px',borderRadius:'8px',border:`1px solid ${C.s200}`,background:C.white,cursor:'pointer',fontSize:'12px',fontWeight:700,color:C.s600,boxShadow:'0 1px 3px rgba(0,0,0,.05)'}}>Hoy</button>
+            </div>
+          }/>
 
-          {/* KPIs globales */}
-          {weeklyFiltered.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'10px',marginBottom:'20px'}}>
-            <KPI label='Operarios' value={weeklyFiltered.length} bg={C.indigoL} color={C.indigoD}/>
-            <KPI label='Verde' value={weeklyFiltered.filter(x=>x.sem==='VERDE').length} bg={C.emeraldL} color={C.emeraldD}/>
-            <KPI label='Amarillo' value={weeklyFiltered.filter(x=>x.sem==='AMARILLO').length} bg={C.amberL} color={C.amberD}/>
-            <KPI label='Rojo' value={weeklyFiltered.filter(x=>x.sem==='ROJO').length} bg={C.roseL} color={C.roseD}/>
-            <KPI label='Rend. prom.' value={weeklyFiltered.length?`${Math.round(weeklyFiltered.reduce((a,x)=>a+x.rendimiento,0)/weeklyFiltered.length)}%`:'—'} bg={C.skyL} color={C.skyD}/>
-            <KPI label='Asist. prom.' value={weeklyFiltered.length?`${Math.round(weeklyFiltered.reduce((a,x)=>a+Number(x.asistencia),0)/weeklyFiltered.length)}%`:'—'} bg={C.violetL} color={C.violetD}/>
+          {/* KPI row */}
+          {matrixData.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:'8px',marginBottom:'18px'}}>
+            <KPI label='Personal' value={matrixData.length} bg={C.indigoL} color={C.indigoD}/>
+            <KPI label='Óptimo' value={totalOpt} bg={C.emeraldL} color={C.emeraldD}/>
+            <KPI label='Regular' value={totalReg} bg={C.amberL} color={C.amberD}/>
+            <KPI label='Revisar' value={totalRev} bg={C.roseL} color={C.roseD}/>
+            <KPI label='Sin datos' value={totalSin} bg={C.s100} color={C.s500}/>
           </div>}
 
-          {/* Semanas */}
-          {weeklyGrouped.length===0
-            ? <Card style={{textAlign:'center',padding:'40px',color:C.s400}}>Sin datos para mostrar. Cargá registros primero.</Card>
-            : weeklyGrouped.map(([week,items])=>{
-                const wc=weekColor(week);
-                const verde=items.filter(x=>x.sem==='VERDE').length;
-                const amarillo=items.filter(x=>x.sem==='AMARILLO').length;
-                const rojo=items.filter(x=>x.sem==='ROJO').length;
-                const rendProm=items.length?Math.round(items.reduce((a,x)=>a+x.rendimiento,0)/items.length):0;
-                const asisProm=items.length?Math.round(items.reduce((a,x)=>a+Number(x.asistencia),0)/items.length):0;
-                return <div key={week} style={{marginBottom:'24px'}}>
-                  {/* Encabezado semana */}
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'10px',marginBottom:'12px',padding:'14px 18px',background:`linear-gradient(135deg,${wc}55,${C.white})`,borderRadius:'14px',border:`1px solid ${wc}`,borderLeft:`5px solid ${wc}`}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'14px'}}>
-                      <div style={{fontSize:'18px',fontWeight:900,color:C.s800}}>Semana {week}</div>
-                      <div style={{fontSize:'12px',color:C.s500}}>{items.length} operario{items.length!==1?'s':''}</div>
+          {/* Matrix + side panel */}
+          <div style={{display:'flex',gap:'16px',alignItems:'flex-start'}}>
+
+            {/* Matrix table */}
+            <div style={{flex:1,minWidth:0}}>
+              {!activeEmployees.length
+                ? <Card style={{textAlign:'center',padding:'48px',color:C.s400}}>
+                    <div style={{fontSize:'40px',marginBottom:'10px'}}>👷</div>
+                    <div style={{fontWeight:700,color:C.s800,marginBottom:'6px'}}>Sin personal cargado</div>
+                    <div style={{fontSize:'13px'}}>Agregá empleados desde la solapa <b>Personal</b>.</div>
+                  </Card>
+                : <div style={{background:C.white,borderRadius:'14px',border:`1px solid ${C.s200}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.05)'}}>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px',minWidth:'680px'}}>
+                        <thead>
+                          <tr style={{background:C.s50,borderBottom:`2px solid ${C.s200}`}}>
+                            <th style={{padding:'13px 18px',textAlign:'left',fontWeight:700,color:C.s600,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.06em',minWidth:'190px',position:'sticky',left:0,background:C.s50,zIndex:2,borderRight:`1px solid ${C.s200}`}}>Empleado</th>
+                            {matrixWeekDates.map(({fecha,d},i)=>{
+                              const isToday=fecha===todayStr;
+                              return <th key={i} style={{padding:'10px 8px',textAlign:'center',minWidth:'72px',background:isToday?C.blueL:'transparent',borderBottom:isToday?`2px solid ${C.blue}`:'none'}}>
+                                <div style={{fontSize:'10px',fontWeight:600,color:isToday?C.blue:C.s400,textTransform:'uppercase',letterSpacing:'0.06em'}}>{DIAS_SHORT[i]}</div>
+                                <div style={{fontSize:'17px',fontWeight:800,color:isToday?C.blue:C.s700,marginTop:'2px',lineHeight:1}}>{d.getDate()}</div>
+                              </th>;
+                            })}
+                            <th style={{padding:'10px 16px',textAlign:'center',fontWeight:700,color:C.s600,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.06em',minWidth:'100px',borderLeft:`1px solid ${C.s200}`}}>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {matrixData.map((row,ri)=>{
+                            const isSelected=matrixEmpSelected===row.emp.legajo;
+                            const eb=estBadge(row.estSemanal);
+                            const initials=nameTokens(row.emp.nombre).slice(0,2).map(t=>t[0]).join('');
+                            return <tr key={row.emp.legajo}
+                              onClick={()=>setMatrixEmpSelected(isSelected?null:row.emp.legajo)}
+                              style={{borderBottom:`1px solid ${C.s100}`,background:isSelected?C.blueL:ri%2===0?C.white:'#FAFBFC',cursor:'pointer',transition:'background .12s'}}>
+                              <td style={{padding:'10px 18px',position:'sticky',left:0,background:isSelected?C.blueL:ri%2===0?C.white:'#FAFBFC',zIndex:1,borderRight:`1px solid ${C.s200}`}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                                  <div style={{width:'34px',height:'34px',borderRadius:'50%',background:isSelected?C.blue:C.indigoL,color:isSelected?C.white:C.indigoD,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:800,flexShrink:0,border:`2px solid ${isSelected?C.blueD:C.s200}`}}>
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div style={{fontWeight:700,color:isSelected?C.indigoD:C.s800,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'150px',fontSize:'13px'}}>{row.emp.nombre}</div>
+                                    <div style={{fontSize:'11px',color:C.s400,marginTop:'1px',whiteSpace:'nowrap'}}>{row.emp.sector}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              {row.dayRecs.map((rec,di)=>{
+                                const {dot,ring,tooltip}=dotStyle(rec);
+                                const isToday=matrixWeekDates[di]?.fecha===todayStr;
+                                return <td key={di} style={{padding:'10px 8px',textAlign:'center',background:isToday?(isSelected?'rgba(37,99,235,.15)':'rgba(37,99,235,.04)'):'transparent'}}>
+                                  <div title={tooltip} style={{width:'14px',height:'14px',borderRadius:'50%',background:dot,margin:'0 auto',boxShadow:`0 0 0 3px ${ring}`,transition:'transform .1s'}}/>
+                                </td>;
+                              })}
+                              <td style={{padding:'10px 16px',textAlign:'center',borderLeft:`1px solid ${C.s100}`}}>
+                                <span style={{display:'inline-block',padding:'4px 12px',borderRadius:'20px',background:eb.bg,color:eb.color,fontSize:'11px',fontWeight:800,whiteSpace:'nowrap'}}>{eb.label}</span>
+                              </td>
+                            </tr>;
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
-                      {[['🟢',C.emeraldL,C.emeraldD,verde,'Verde'],['🟡',C.amberL,C.amberD,amarillo,'Amarillo'],['🔴',C.roseL,C.roseD,rojo,'Rojo']].map(([icon,bg,color,count,label])=>
-                        <span key={label} style={{padding:'4px 12px',borderRadius:'20px',background:bg,color,fontSize:'12px',fontWeight:700}}>{icon} {count} {label}</span>)}
-                      <span style={{padding:'4px 12px',borderRadius:'20px',background:C.indigoL,color:C.indigoD,fontSize:'12px',fontWeight:700}}>📊 Rend. {rendProm}%</span>
-                      <span style={{padding:'4px 12px',borderRadius:'20px',background:C.skyL,color:C.skyD,fontSize:'12px',fontWeight:700}}>📅 Asist. {asisProm}%</span>
+                    {/* Legend */}
+                    <div style={{padding:'10px 18px',borderTop:`1px solid ${C.s100}`,display:'flex',gap:'14px',flexWrap:'wrap',alignItems:'center'}}>
+                      <span style={{fontSize:'10px',fontWeight:700,color:C.s400,textTransform:'uppercase',letterSpacing:'0.06em'}}>Referencias</span>
+                      {[[C.emerald,C.emeraldL,'Óptimo'],[C.amber,C.amberL,'Regular'],[C.rose,C.roseL,'Revisar/Ausente'],[C.sky,C.skyL,'Libre/Lic.'],[C.s300,C.s100,'Sin registro']].map(([c,bg,l])=>
+                        <div key={l} style={{display:'flex',alignItems:'center',gap:'5px'}}>
+                          <div style={{width:'10px',height:'10px',borderRadius:'50%',background:c,boxShadow:`0 0 0 2px ${bg}`,flexShrink:0}}/>
+                          <span style={{fontSize:'11px',color:C.s500,fontWeight:500}}>{l}</span>
+                        </div>)}
+                      <span style={{marginLeft:'auto',fontSize:'11px',color:C.s400}}>{matrixData.length} empleados</span>
                     </div>
+                  </div>}
+            </div>
+
+            {/* Side panel — employee detail */}
+            {selRow&&<div style={{width:'272px',flexShrink:0}}>
+              <div style={{background:C.white,borderRadius:'14px',border:`1px solid ${C.s200}`,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,.08)',position:'sticky',top:'24px'}}>
+                {/* Avatar header */}
+                <div style={{background:`linear-gradient(135deg,${C.blue} 0%,${C.violet} 100%)`,padding:'22px 20px',textAlign:'center',position:'relative'}}>
+                  <button onClick={()=>setMatrixEmpSelected(null)} style={{position:'absolute',top:'10px',right:'10px',background:'rgba(255,255,255,.2)',border:'none',color:C.white,width:'26px',height:'26px',borderRadius:'50%',cursor:'pointer',fontSize:'14px',fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                  <div style={{width:'60px',height:'60px',borderRadius:'50%',background:'rgba(255,255,255,.2)',color:C.white,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',fontWeight:800,margin:'0 auto 12px',border:'2px solid rgba(255,255,255,.35)'}}>
+                    {nameTokens(selRow.emp.nombre).slice(0,2).map(t=>t[0]).join('')}
                   </div>
+                  <div style={{color:C.white,fontWeight:800,fontSize:'15px',lineHeight:1.25,marginBottom:'3px'}}>{selRow.emp.nombre}</div>
+                  <div style={{color:'rgba(255,255,255,.7)',fontSize:'12px'}}>Legajo {selRow.emp.legajo} · {selRow.emp.tipoEmpleado}</div>
+                </div>
 
-                  {/* Grid de tarjetas por operario */}
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'10px'}}>
-                    {items.slice().sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre))).map(it=>{
-                      const sc=semColor2(it.sem);
-                      const sb=semBg(it.sem);
-                      const st=semText(it.sem);
-                      const rend=Number(it.rendimiento)||0;
-                      const asis=Number(it.asistencia)||0;
-                      return <div key={`${it.legajo}-${it.semana}`} style={{background:C.white,borderRadius:'12px',border:`1px solid ${C.s200}`,borderTop:`4px solid ${sc}`,padding:'14px',boxShadow:'0 1px 4px rgba(0,0,0,.05)',display:'flex',flexDirection:'column',gap:'10px'}}>
-                        {/* Nombre + semáforo */}
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'8px'}}>
-                          <div>
-                            <div style={{fontSize:'13px',fontWeight:800,color:C.s800,lineHeight:1.3}}>{it.nombre}</div>
-                            <div style={{fontSize:'11px',color:C.s400,marginTop:'2px'}}>{it.sector}</div>
-                          </div>
-                          <span style={{flexShrink:0,padding:'3px 10px',borderRadius:'20px',background:sb,color:st,fontSize:'11px',fontWeight:800,whiteSpace:'nowrap'}}>{it.sem==='VERDE'?'● Verde':it.sem==='AMARILLO'?'● Amarillo':it.sem==='ROJO'?'● Rojo':'N/A'}</span>
-                        </div>
+                {/* Stats */}
+                <div style={{padding:'16px',display:'flex',flexDirection:'column',gap:'0'}}>
+                  {[
+                    ['⚙️ Sector',selRow.emp.sector],
+                    ['🕐 Turno',selRow.emp.turno],
+                    ['📅 Asistencia',`${selRow.pres} / ${selRow.prog} días (${selRow.asistPct}%)`],
+                    ...(selRow.avgRend!==null?[['🎯 Rend. prom.',`${selRow.avgRend}%`]]:[]),
+                    ['🟢 Estado semana',<span key='est' style={{padding:'3px 10px',borderRadius:'20px',background:estBadge(selRow.estSemanal).bg,color:estBadge(selRow.estSemanal).color,fontSize:'11px',fontWeight:800}}>{estBadge(selRow.estSemanal).label}</span>]
+                  ].map(([label,value],i,arr)=>
+                    <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.s100}`:'none'}}>
+                      <span style={{fontSize:'12px',color:C.s500,fontWeight:500}}>{label}</span>
+                      <span style={{fontSize:'12px',fontWeight:700,color:C.s800,textAlign:'right'}}>{value}</span>
+                    </div>)}
+                </div>
 
-                        {/* Barra rendimiento */}
-                        <div>
-                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:'4px'}}>
-                            <span style={{fontSize:'10px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.05em'}}>Rendimiento</span>
-                            <span style={{fontSize:'12px',fontWeight:800,color:rendColor(rend)}}>{rend}%</span>
-                          </div>
-                          <div style={{height:'7px',borderRadius:'99px',background:C.s100,overflow:'hidden'}}>
-                            <div style={{height:'100%',width:`${Math.min(100,rend)}%`,background:rendBg(rend),borderRadius:'99px',transition:'width .3s'}}/>
-                          </div>
-                        </div>
-
-                        {/* Barra asistencia */}
-                        <div>
-                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:'4px'}}>
-                            <span style={{fontSize:'10px',fontWeight:700,color:C.s500,textTransform:'uppercase',letterSpacing:'0.05em'}}>Asistencia</span>
-                            <span style={{fontSize:'12px',fontWeight:800,color:rendColor(asis)}}>{asis}%</span>
-                          </div>
-                          <div style={{height:'7px',borderRadius:'99px',background:C.s100,overflow:'hidden'}}>
-                            <div style={{height:'100%',width:`${Math.min(100,asis)}%`,background:C.indigo,borderRadius:'99px'}}/>
-                          </div>
-                        </div>
-
-                        {/* Stats fila */}
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'4px',paddingTop:'6px',borderTop:`1px solid ${C.s100}`}}>
-                          {[['Pres.',it.pres,C.emeraldD],['Tardes',it.tarde,C.amberD],['Aus.',it.ausente,C.roseD],['Errores',it.err,C.s500]].map(([lbl,val,clr])=>
-                            <div key={lbl} style={{textAlign:'center'}}>
-                              <div style={{fontSize:'14px',fontWeight:800,color:clr}}>{val}</div>
-                              <div style={{fontSize:'9px',color:C.s400,textTransform:'uppercase',letterSpacing:'0.04em'}}>{lbl}</div>
-                            </div>)}
-                        </div>
+                {/* Day-by-day detail */}
+                <div style={{padding:'0 16px 16px'}}>
+                  <div style={{fontSize:'10px',fontWeight:700,color:C.s400,textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:'10px',paddingTop:'10px',borderTop:`1px solid ${C.s100}`}}>Día a día</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
+                    {selRow.dayRecs.map((rec,i)=>{
+                      const {dot,tooltip}=dotStyle(rec);
+                      const dayDate=matrixWeekDates[i];
+                      const isToday=dayDate?.fecha===todayStr;
+                      return <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 8px',borderRadius:'7px',background:isToday?C.blueL:'transparent'}}>
+                        <div style={{width:'8px',height:'8px',borderRadius:'50%',background:dot,flexShrink:0}}/>
+                        <span style={{fontSize:'11px',fontWeight:isToday?700:500,color:isToday?C.blue:C.s500,width:'26px',flexShrink:0}}>{DIAS_SHORT[i]}</span>
+                        <span style={{fontSize:'12px',color:isToday?C.blue:C.s600,fontWeight:600,width:'18px',flexShrink:0}}>{dayDate?.d.getDate()}</span>
+                        <span style={{fontSize:'11px',color:rec?C.s700:C.s300,marginLeft:'auto',textAlign:'right',fontWeight:rec?600:400}}>{tooltip}</span>
                       </div>;
                     })}
                   </div>
-                </div>;
-              })}
+                </div>
+
+                {/* CTA */}
+                <div style={{padding:'0 16px 16px'}}>
+                  <button onClick={()=>{setFichaLeg(selRow.emp.legajo);setTab('FICHA_OPERARIO');}} style={{width:'100%',padding:'10px',borderRadius:'8px',border:`1px solid ${C.blue}`,background:C.blueL,color:C.blue,fontSize:'12px',fontWeight:700,cursor:'pointer',transition:'background .15s'}}>
+                    Ver ficha completa →
+                  </button>
+                </div>
+              </div>
+            </div>}
+          </div>
         </div>;
       })()}
 
@@ -2206,6 +2352,7 @@ function App(){
           </div>
         </div>
       </div>}
+      </main>
     </div>
   </div>;
 }
