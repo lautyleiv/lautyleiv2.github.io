@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -703,6 +703,56 @@
 
     .icon-btn:hover { color: var(--primary); border-color: #bfdbfe; background: #eff6ff; }
 
+
+
+    .import-panel {
+      border: 1px dashed #bfdbfe;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      border-radius: 18px;
+      padding: 16px;
+      margin: 14px 0 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .import-panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .import-panel h4 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+
+    .import-panel p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+      user-select: none;
+    }
+
+    .check-row input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
     .note {
       border: 1px solid #bfdbfe;
       background: #eff6ff;
@@ -1014,11 +1064,27 @@
         <section class="view" id="view-empleados">
           <div class="card">
             <div class="section-head">
-              <div><h3>Gestión clara del personal</h3><p>Alta, edición, baja y restauración sin perder historial.</p></div>
+              <div><h3>Gestión clara del personal</h3><p>Alta manual, importación desde tu Excel, baja y restauración sin perder historial.</p></div>
               <div class="tabs-tools" style="margin:0;"><button class="btn btn-primary" onclick="openEmployeeModal()">＋ Agregar</button><button class="btn btn-secondary" onclick="exportTable('employees')">⬇ Exportar</button><button class="btn btn-danger" onclick="resetAllDataConfirm()">🗑 Borrar todos los datos</button></div>
             </div>
+
+            <div class="import-panel">
+              <div class="import-panel-head">
+                <div>
+                  <h4>Importar empleados desde Excel</h4>
+                  <p>Usá tu planilla con columnas <strong>nombre</strong>, <strong>sector</strong>, <strong>turno</strong>, <strong>tipoEmpleado</strong>, <strong>supervisor</strong> y <strong>metaDiaria</strong>. Si un empleado ya existe, se actualiza; si no existe, se agrega.</p>
+                </div>
+                <div class="tabs-tools" style="margin:0;">
+                  <label class="btn btn-primary">⬆ Cargar Excel de empleados<input hidden type="file" accept=".xlsx,.xls,.csv" onchange="importEmployeesFile(event)"></label>
+                  <button class="btn btn-secondary" onclick="downloadEmployeesTemplate()">⬇ Modelo CSV</button>
+                </div>
+              </div>
+              <label class="check-row"><input type="checkbox" id="replaceEmployeesBeforeImport"> Reemplazar la lista actual antes de importar</label>
+              <div class="note">ℹ️ <span>Esta importación detecta automáticamente empleados de destajo, administrativos y dados de baja. Si aparecen Yañez o Argañaraz/Argarañaz, quedan como <strong>Baja</strong>.</span></div>
+            </div>
+
             <div class="form-row" style="margin-bottom:14px;">
-              <div class="field"><label>Buscar empleado</label><input id="empSearch" placeholder="Nombre, apellido, sector..." oninput="renderEmployees()"></div>
+              <div class="field"><label>Buscar empleado</label><input id="empSearch" placeholder="Nombre, apellido, sector, supervisor..." oninput="renderEmployees()"></div>
               <div class="field"><label>Estado</label><select id="empStatusFilter" onchange="renderEmployees()"><option value="">Todos</option><option>Activo</option><option>Administrativo</option><option>Baja</option></select></div>
               <div class="field"><label>Turno</label><select id="empShiftFilter" onchange="renderEmployees()"><option value="">Todos</option></select></div>
             </div>
@@ -1078,8 +1144,10 @@
         <div class="field"><label>Apellido</label><input id="empLast"></div>
         <div class="field"><label>Área / sector habitual</label><select id="empArea"></select></div>
         <div class="field"><label>Turno</label><select id="empShift"></select></div>
-        <div class="field"><label>Rango</label><select id="empRole"><option>Operario</option><option>Supervisor</option><option>Administrativo</option></select></div>
+        <div class="field"><label>Rango</label><select id="empRole"><option>Operario</option><option>Supervisor</option><option>Administrativo</option><option>Destajo</option></select></div>
         <div class="field"><label>Estado</label><select id="empStatus"><option>Activo</option><option>Administrativo</option><option>Baja</option></select></div>
+        <div class="field"><label>Supervisor</label><input id="empSupervisor" placeholder="Supervisor asignado"></div>
+        <div class="field"><label>Meta diaria</label><input type="number" id="empMetaDaily" placeholder="Ej: 350"></div>
       </div>
       <div class="tabs-tools" style="justify-content:flex-end;margin-top:18px;margin-bottom:0;">
         <button class="btn btn-secondary" onclick="closeEmployeeModal()">Cancelar</button>
@@ -1181,6 +1249,60 @@
     function moneyless(n) { return Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 }); }
     function escapeHtml(s) { return String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
     function fullName(e) { return `${e.name} ${e.last}`.trim(); }
+
+    function normalizeText(value) {
+      return String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ñ/g, 'n')
+        .trim()
+        .toLowerCase();
+    }
+
+    function normalizeHeader(value) {
+      return normalizeText(value).replace(/[^a-z0-9]/g, '');
+    }
+
+    function employeeKey(value) {
+      return normalizeText(value).replace(/[^a-z0-9]/g, '');
+    }
+
+    function parseNumberAny(value) {
+      if (value === null || value === undefined || value === '') return 0;
+      const s = String(value).trim().replace(/\./g, '').replace(',', '.');
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function getRowValue(row, aliases) {
+      const keys = Object.keys(row || {});
+      const wanted = aliases.map(normalizeHeader);
+      const exact = keys.find(k => wanted.includes(normalizeHeader(k)));
+      if (exact) return row[exact];
+      const partial = keys.find(k => wanted.some(a => normalizeHeader(k).includes(a) || a.includes(normalizeHeader(k))));
+      return partial ? row[partial] : '';
+    }
+
+    function isForcedBajaName(name) {
+      const n = normalizeText(name);
+      return /\byanez\b|\byañez\b|argaranaz|arganaraz|argarañaraz|argarañaz|argaranas|argarañas/.test(n);
+    }
+
+    function isEmployeeSheet(rows) {
+      if (!rows || !rows.length) return false;
+      const headers = Object.keys(rows[0]).map(normalizeHeader);
+      const hasName = headers.some(h => ['nombre','empleado','operario','operariosupervisor'].includes(h) || h.includes('nombre'));
+      const hasEmployeeMeta = headers.some(h => h.includes('sector') || h.includes('area') || h.includes('turno') || h.includes('tipoempleado') || h.includes('supervisor') || h.includes('metadiaria'));
+      return hasName && hasEmployeeMeta;
+    }
+
+    async function readWorkbookRows(file) {
+      if (!window.XLSX) throw new Error('No cargó la librería XLSX. Verificá internet o usá CSV.');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    }
 
     function iconSvg(type) {
       const icons = {
@@ -1388,8 +1510,13 @@
     }
 
     function normalizeEmployeeName(raw) {
-      const found = state.employees.find(e => e.name.toLowerCase() === raw.toLowerCase() || fullName(e).toLowerCase().includes(raw.toLowerCase()));
-      return found ? fullName(found) : raw;
+      const rawKey = employeeKey(raw);
+      const found = state.employees.find(e => {
+        const fn = fullName(e);
+        const key = employeeKey(fn);
+        return key === rawKey || key.includes(rawKey) || rawKey.includes(key) || employeeKey(e.name) === rawKey;
+      });
+      return found ? fullName(found) : String(raw || '').trim();
     }
 
     function loadWhatsappExample() {
@@ -1400,31 +1527,31 @@
       const file = event.target.files[0];
       if (!file) return;
       try {
-        if (!window.XLSX) return toast('No cargó la librería XLSX. Verificá internet o usá CSV.');
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data);
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval:'' });
+        const rows = await readWorkbookRows(file);
+        if (isEmployeeSheet(rows)) {
+          const result = importEmployeeRows(rows, { replace: false, silent: true });
+          saveState(); refreshSelects(); refreshUI();
+          toast(`Detecté una planilla de empleados: ${result.added} agregados y ${result.updated} actualizados.`);
+          return;
+        }
         let added = 0;
         rows.forEach(r => {
-          const keys = Object.keys(r);
-          const get = (...names) => {
-            const k = keys.find(x => names.some(n => x.toLowerCase().includes(n)));
-            return k ? r[k] : '';
-          };
-          const date = parseDateAny(get('fecha','día','dia'));
-          const employee = String(get('empleado','operario','nombre') || '').trim();
-          const sector = String(get('sector','línea','linea','area') || 'Sin sector').trim();
-          const qty = Number(String(get('cantidad','producción','produccion','unidad')).replace(',','.')) || 0;
-          const salt = Number(String(get('sal')).replace(',','.')) || 0;
+          const date = parseDateAny(getRowValue(r, ['fecha','día','dia','date']));
+          const employeeRaw = String(getRowValue(r, ['empleado','operario','nombre','operario supervisor']) || '').trim();
+          const employee = normalizeEmployeeName(employeeRaw);
+          const sector = String(getRowValue(r, ['sector','línea','linea','area','área']) || 'Sin sector').trim();
+          const qty = parseNumberAny(getRowValue(r, ['cantidad','producción','produccion','unidad','unidades','kilos','kg','total']));
+          const salt = parseNumberAny(getRowValue(r, ['sal','sal usada','sal usada kg','bolsas de sal']));
           if (employee && (qty || salt)) {
+            ensureDestajoEmployee(employee, sector, date);
             state.production.push({ id:uid(), date, employee, sector, qty, salt, origin:'Excel' });
             if (salt) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, user:employee });
+            addAttendanceFromProduction(employee, sector, date);
             added++;
           }
         });
-        saveState(); refreshUI(); toast(`Excel importado: ${added} registros.`);
-      } catch (err) { console.error(err); toast('No pude importar el archivo. Revisá columnas/formato.'); }
+        saveState(); refreshSelects(); refreshUI(); toast(`Excel de producción importado: ${added} registros.`);
+      } catch (err) { console.error(err); toast(err.message || 'No pude importar el archivo. Revisá columnas/formato.'); }
       event.target.value = '';
     }
 
@@ -1566,15 +1693,125 @@
       state.salt.push(item); saveState(); document.getElementById('saltQty').value=''; refreshUI(); toast('Movimiento de sal guardado.');
     }
 
+    function splitEmployeeNameFromRow(row) {
+      const full = String(getRowValue(row, ['nombre','empleado','operario','operario supervisor']) || '').replace(/\s+/g, ' ').trim();
+      const apellido = String(getRowValue(row, ['apellido']) || '').replace(/\s+/g, ' ').trim();
+      if (apellido) return { name: full, last: apellido };
+      return { name: full, last: '' };
+    }
+
+    function inferEmployeeStatus(name, sector, role) {
+      const r = normalizeText(role);
+      const s = normalizeText(sector);
+      const n = normalizeText(name);
+      if (isForcedBajaName(name)) return 'Baja';
+      if (r.includes('administrativo') || s.includes('oficina') || n.includes('valentina acosta') || n.includes('sofia raimondi')) return 'Administrativo';
+      return 'Activo';
+    }
+
+    function importEmployeeRows(rows, opts = {}) {
+      const replace = !!opts.replace;
+      const today = toISODate(new Date());
+      if (replace) state.employees = [];
+      let added = 0, updated = 0, skipped = 0;
+
+      rows.forEach(row => {
+        const { name, last } = splitEmployeeNameFromRow(row);
+        const completeName = `${name} ${last}`.trim();
+        if (!completeName) { skipped++; return; }
+
+        const sector = String(getRowValue(row, ['sector','área','area']) || 'Sin sector').replace(/\s+/g, ' ').trim();
+        const shift = String(getRowValue(row, ['turno','jornada','horario']) || 'Día').replace(/\s+/g, ' ').trim();
+        const roleRaw = String(getRowValue(row, ['tipoEmpleado','tipo empleado','tipo','rango','cargo','rol','puesto']) || 'Operario').replace(/\s+/g, ' ').trim();
+        const supervisor = String(getRowValue(row, ['supervisor','encargado','responsable']) || '').replace(/\s+/g, ' ').trim();
+        const metaDaily = parseNumberAny(getRowValue(row, ['metaDiaria','meta diaria','meta','objetivo','objetivo diario'])) || '';
+        const status = inferEmployeeStatus(completeName, sector, roleRaw);
+
+        if (sector && !state.config.sectors.some(x => normalizeText(x) === normalizeText(sector))) state.config.sectors.push(sector);
+        if (shift && !state.config.shifts.some(x => normalizeText(x) === normalizeText(shift))) state.config.shifts.push(shift);
+
+        const key = employeeKey(completeName);
+        const existing = state.employees.find(e => employeeKey(fullName(e)) === key || employeeKey(e.name) === key);
+        const item = {
+          id: existing?.id || uid(),
+          name,
+          last,
+          area: sector,
+          shift,
+          role: roleRaw,
+          status,
+          supervisor,
+          metaDaily,
+          created: existing?.created || today
+        };
+
+        if (existing) {
+          Object.assign(existing, item, { id: existing.id, created: existing.created || today });
+          updated++;
+        } else {
+          state.employees.push(item);
+          added++;
+        }
+      });
+      if (!opts.silent) {
+        saveState(); refreshSelects(); refreshUI();
+        toast(`Empleados importados: ${added} nuevos, ${updated} actualizados${skipped ? `, ${skipped} omitidos` : ''}.`);
+      }
+      return { added, updated, skipped };
+    }
+
+    async function importEmployeesFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const rows = await readWorkbookRows(file);
+        if (!isEmployeeSheet(rows)) return toast('La planilla no parece ser de empleados. Necesito columnas como nombre, sector, turno, tipoEmpleado, supervisor y metaDiaria.');
+        const replace = document.getElementById('replaceEmployeesBeforeImport')?.checked;
+        if (replace && !confirm('Esto borra la lista actual de empleados y la reemplaza por el Excel. ¿Continuar?')) return;
+        importEmployeeRows(rows, { replace });
+      } catch (err) {
+        console.error(err);
+        toast(err.message || 'No pude importar empleados. Revisá el formato del Excel.');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    function downloadEmployeesTemplate() {
+      const csv = [
+        'nombre;sector;turno;tipoEmpleado;supervisor;metaDiaria',
+        'ACCIARDI MAXIMILIANO;Salado;Noche;Operario;RODRIGUEZ YAMILA ANDREA;250',
+        'AGUERO SOFIA;Apilado;Día;Supervisor;AGUERO SOFIA;300',
+        'MOLINA SEBASTIAN;Empaque;Día;Operario;IBARRA KAREN;600'
+      ].join('\n');
+      downloadFile('modelo_empleados_panel_planta.csv', csv, 'text/csv;charset=utf-8');
+    }
+
+    function ensureDestajoEmployee(employeeName, sector, date) {
+      const key = employeeKey(employeeName);
+      const exists = state.employees.some(e => employeeKey(fullName(e)) === key || employeeKey(e.name) === key);
+      if (exists) return;
+      if (sector && !state.config.sectors.some(x => normalizeText(x) === normalizeText(sector))) state.config.sectors.push(sector);
+      state.employees.push({ id:uid(), name:employeeName, last:'', area:sector || 'Destajo', shift:'Día', role:'Destajo', status:'Activo', supervisor:'', metaDaily:'', created: date || toISODate(new Date()) });
+    }
+
+    function addAttendanceFromProduction(employee, sector, date) {
+      const key = employeeKey(employee);
+      const exists = state.attendance.some(a => a.date === date && employeeKey(a.employee) === key);
+      if (exists) return;
+      const emp = state.employees.find(e => employeeKey(fullName(e)) === key || employeeKey(e.name) === key);
+      state.attendance.push({ id:uid(), date, employee, shift: emp?.shift || 'Día', in:'', out:'', status:'Presente', obs:`Presente automático por producción${sector ? ' · ' + sector : ''}` });
+    }
+
     function renderEmployees() {
-      const search = (document.getElementById('empSearch').value || '').toLowerCase();
+      const search = normalizeText(document.getElementById('empSearch').value || '');
       const status = document.getElementById('empStatusFilter').value;
       const shift = document.getElementById('empShiftFilter').value;
       let rows = state.employees.slice();
-      if (search) rows = rows.filter(e => `${fullName(e)} ${e.area} ${e.role}`.toLowerCase().includes(search));
+      if (search) rows = rows.filter(e => normalizeText(`${fullName(e)} ${e.area} ${e.role} ${e.supervisor || ''}`).includes(search));
       if (status) rows = rows.filter(e=>e.status===status);
       if (shift) rows = rows.filter(e=>e.shift===shift);
-      document.getElementById('employeesTable').innerHTML = `<thead><tr><th>ID</th><th>Nombre</th><th>Área</th><th>Turno</th><th>Rango</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${rows.map((e,i)=>`<tr><td>${String(i+101).padStart(3,'0')}</td><td><strong>${escapeHtml(fullName(e))}</strong></td><td>${escapeHtml(e.area)}</td><td>${escapeHtml(e.shift)}</td><td>${escapeHtml(e.role)}</td><td>${statusBadge(e.status)}</td><td class="actions-cell"><button class="icon-btn" onclick="openEmployeeModal('${e.id}')">✎</button><button class="icon-btn" onclick="toggleEmployeeStatus('${e.id}')">${e.status==='Baja'?'↩':'⊘'}</button><button class="icon-btn" onclick="deleteEmployeeHard('${e.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="7">Sin empleados.</td></tr>`}</tbody>`;
+      document.getElementById('employeesTable').innerHTML = `<thead><tr><th>ID</th><th>Nombre</th><th>Sector</th><th>Turno</th><th>Tipo</th><th>Supervisor</th><th>Meta diaria</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${rows.map((e,i)=>`<tr><td>${String(i+101).padStart(3,'0')}</td><td><strong>${escapeHtml(fullName(e))}</strong></td><td>${escapeHtml(e.area || '-')}</td><td>${escapeHtml(e.shift || '-')}</td><td>${escapeHtml(e.role || '-')}</td><td>${escapeHtml(e.supervisor || '-')}</td><td>${e.metaDaily ? number(e.metaDaily) : '-'}</td><td>${statusBadge(e.status)}</td><td class="actions-cell"><button class="icon-btn" onclick="openEmployeeModal('${e.id}')">✎</button><button class="icon-btn" onclick="toggleEmployeeStatus('${e.id}')">${e.status==='Baja'?'↩':'⊘'}</button><button class="icon-btn" onclick="deleteEmployeeHard('${e.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="9">Sin empleados. Importá tu Excel o agregalos manualmente.</td></tr>`}</tbody>`;
     }
 
     function openEmployeeModal(id='') {
@@ -1588,17 +1825,30 @@
       document.getElementById('empShift').value = e?.shift || state.config.shifts[0];
       document.getElementById('empRole').value = e?.role || 'Operario';
       document.getElementById('empStatus').value = e?.status || 'Activo';
+      document.getElementById('empSupervisor').value = e?.supervisor || '';
+      document.getElementById('empMetaDaily').value = e?.metaDaily || '';
       modal.classList.add('active');
     }
     function closeEmployeeModal(){ document.getElementById('employeeModal').classList.remove('active'); }
 
     function saveEmployee() {
       const id = document.getElementById('empIdEdit').value;
-      const item = { id: id || uid(), name:document.getElementById('empName').value.trim(), last:document.getElementById('empLast').value.trim(), area:document.getElementById('empArea').value, shift:document.getElementById('empShift').value, role:document.getElementById('empRole').value, status:document.getElementById('empStatus').value, created: toISODate(new Date()) };
-      if (!item.name || !item.last) return toast('Completá nombre y apellido.');
+      const item = {
+        id: id || uid(),
+        name:document.getElementById('empName').value.trim(),
+        last:document.getElementById('empLast').value.trim(),
+        area:document.getElementById('empArea').value,
+        shift:document.getElementById('empShift').value,
+        role:document.getElementById('empRole').value,
+        status:document.getElementById('empStatus').value,
+        supervisor:document.getElementById('empSupervisor').value.trim(),
+        metaDaily:parseNumberAny(document.getElementById('empMetaDaily').value) || '',
+        created: toISODate(new Date())
+      };
+      if (!item.name) return toast('Completá al menos el nombre del empleado.');
       if (id) state.employees = state.employees.map(e=>e.id===id ? { ...e, ...item, created:e.created } : e);
       else state.employees.push(item);
-      saveState(); closeEmployeeModal(); refreshUI(); toast('Empleado guardado.');
+      saveState(); refreshSelects(); closeEmployeeModal(); refreshUI(); toast('Empleado guardado.');
     }
 
     function toggleEmployeeStatus(id) {
