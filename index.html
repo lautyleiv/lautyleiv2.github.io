@@ -165,6 +165,7 @@
     .detail-list{display:grid;gap:14px;margin-top:18px}.detail-line{display:grid;grid-template-columns:1fr auto;gap:14px;color:#475569}.detail-line strong{color:var(--ink)}
     .salt-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(430px,.9fr);gap:18px;margin-top:18px}
     .employee-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+    .checkline{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 4px;color:var(--muted);font-size:13px}.checkline input{width:auto}.hint{margin-top:12px;padding:12px 14px;border:1px solid var(--line);background:var(--blue-50);border-radius:14px;color:var(--muted);font-size:13px;line-height:1.45}.form-grid.compact{align-items:end}
     .empty{padding:34px;text-align:center;color:var(--muted);border:1px dashed #cbd5e1;border-radius:18px;background:#fff}
     .toast{position:fixed;right:22px;bottom:22px;z-index:90;background:var(--ink);color:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 24px 60px rgba(15,23,42,.25);font-weight:750;opacity:0;transform:translateY(14px);pointer-events:none;transition:.2s;max-width:min(420px,calc(100vw - 44px))}
     .toast.show{opacity:1;transform:none}
@@ -222,7 +223,7 @@
 
 <script>
 (() => {
-  const STORAGE_KEY = 'panelPlantaMinimal_v3_appReal';
+  const STORAGE_KEY = 'panelPlantaMinimal_v4_importReal';
   const $ = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
   const fmt = new Intl.NumberFormat('es-AR');
@@ -251,7 +252,7 @@
   $('#logoIcon').innerHTML = Icons.plant;
   $('#bellIcon').innerHTML = Icons.bell;
 
-  const todayISO = () => new Date().toISOString().slice(0,10);
+  const todayISO = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
   const isoToAR = iso => {
     if(!iso) return '-';
     const [y,m,d] = iso.split('-');
@@ -271,6 +272,372 @@
   const uid = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
   const esc = v => String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+  const cleanLine = s => String(s ?? '')
+    .replace(/[✅✔️☑️]/g,'')
+    .replace(/[•●]/g,'')
+    .replace(/\*/g,'')
+    .replace(/\u00a0/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+  const normName = s => norm(cleanLine(s)).replace(/[,.;:]/g,'').replace(/\s+/g,' ').trim();
+  const isNameLike = s => {
+    s = cleanLine(s);
+    if(!s || s.includes(':') || /\d/.test(s)) return false;
+    const n = norm(s);
+    if(['recreo','delta','deltacar','alba','brillante','cooperativa parana','suipacha','santa ines'].includes(n)) return false;
+    if(/^(tipo|unidad|kilos|sacos|total|fecha|seleccionado|apilado|en prensa|se baja|sal|resalado|sacudido|lavado|salado)/.test(n)) return false;
+    return s.split(/\s+/).length >= 2;
+  };
+  function flexDateToISO(value, fallbackYear = new Date().getFullYear()){
+    if(value === null || value === undefined || value === '') return '';
+    if(typeof value === 'number' || /^\d+(\.\d+)?$/.test(String(value).trim())){
+      const n = Number(value);
+      if(n > 20000 && n < 80000) return excelDateToISO(n);
+    }
+    const s = String(value).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+    if(!m) return '';
+    let y = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : String(fallbackYear);
+    return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  }
+  function excelDateToISO(serial){
+    const n = Number(serial);
+    if(!isFinite(n)) return '';
+    const d = new Date(Date.UTC(1899,11,30) + Math.floor(n) * 86400000);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  function excelTimeToHM(value){
+    if(value === null || value === undefined || value === '') return '';
+    if(value instanceof Date) return `${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`;
+    if(typeof value === 'number' || /^\d+(\.\d+)?$/.test(String(value).trim())){
+      let n = Number(value);
+      if(!isFinite(n)) return '';
+      n = n % 1;
+      let minutes = Math.round(n * 24 * 60);
+      minutes = ((minutes % 1440) + 1440) % 1440;
+      return `${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`;
+    }
+    const s = String(value).trim();
+    const m = s.match(/(\d{1,2})[:.](\d{1,2})/);
+    if(m) return `${m[1].padStart(2,'0')}:${m[2].padStart(2,'0')}`;
+    return '';
+  }
+  function inferTurnoFromTime(hm){
+    const h = Number(String(hm||'').slice(0,2));
+    if(!isFinite(h)) return 'Mañana';
+    if(h >= 18 || h < 6) return 'Noche';
+    if(h >= 12) return 'Tarde';
+    return 'Mañana';
+  }
+  function findEmployee(name){
+    const key = normName(name);
+    return state.employees.find(e => normName(e.name) === key);
+  }
+  function upsertEmployeeByName(name, area='Sin sector', turno='Mañana', role='Operario'){
+    name = cleanLine(name);
+    if(!name || normName(name)==='sin asignar') return name;
+    const key = normName(name);
+    if(/\b(yaniez|yanez|yañez|arganaraz|argañaraz|argaranaz|argaranas|argarañas)\b/.test(key)) return '';
+    let existing = state.employees.find(e=>normName(e.name)===key);
+    const isAdmin = /\b(acosta valentina|raimondi sofia)\b/.test(key);
+    if(existing){
+      if(isAdmin){ existing.area='Administración'; existing.turno='Administrativo'; existing.role='Administrativa'; existing.status='Administrativa'; }
+      return existing.name;
+    }
+    const id = 'EMP-' + String(state.employees.length + 101).padStart(3,'0');
+    state.employees.push({
+      id,
+      name,
+      area: isAdmin ? 'Administración' : (area || 'Sin sector'),
+      turno: isAdmin ? 'Administrativo' : (turno || 'Mañana'),
+      role: isAdmin ? 'Administrativa' : (role || 'Operario'),
+      status: isAdmin ? 'Administrativa' : 'Activo',
+      supervisor:'',
+      metaDiaria:''
+    });
+    return name;
+  }
+  function isAttendanceMatrix(matrix){
+    const txt = matrix.slice(0,4).flat().map(x=>norm(x)).join(' ');
+    return txt.includes('operario / supervisor') && txt.includes('horario fichaje') && txt.includes('presente') && txt.includes('ausente');
+  }
+  function importAttendanceMatrix(matrix){
+    let headerRow = matrix.findIndex(row => row.some(c=>norm(c)==='fecha') && row.some(c=>norm(c).includes('operario')));
+    if(headerRow < 0) headerRow = 0;
+    const dataStart = headerRow + 2;
+    let added = 0, present = 0, absent = 0;
+    for(let i=dataStart; i<matrix.length; i++){
+      const row = matrix[i] || [];
+      const employeeRaw = cleanLine(row[1]);
+      if(!employeeRaw) continue;
+      const employee = upsertEmployeeByName(employeeRaw, 'Producción', 'Mañana', 'Operario');
+      if(!employee) continue;
+      const date = flexDateToISO(row[0]) || todayISO();
+      const entrada = excelTimeToHM(row[2]);
+      const salida = excelTimeToHM(row[3]);
+      const presenteFlag = cleanLine(row[4]);
+      const ausenteFlag = cleanLine(row[5]);
+      const isAbsent = /^x$/i.test(ausenteFlag) || norm(ausenteFlag)==='ausente';
+      const status = isAbsent ? 'Ausente' : 'Presente';
+      const turno = findEmployee(employee)?.turno || inferTurnoFromTime(entrada);
+      const obs = isAbsent ? 'Importado desde Excel: marcado Ausente' : 'Importado desde Excel: presente';
+      state.attendance = state.attendance.filter(a => !(a.date===date && normName(a.employee)===normName(employee)));
+      state.attendance.push({id:uid('att_'),date,employee,turno,in:entrada,out:salida,status,obs});
+      added++; isAbsent ? absent++ : present++;
+    }
+    return {added,present,absent};
+  }
+  function canonicalHeader(h){
+    return norm(h).replace(/[^a-z0-9]/g,'');
+  }
+  function isEmployeeMatrix(matrix){
+    if(!Array.isArray(matrix)) return false;
+    const headText = matrix.slice(0,10).flat().map(canonicalHeader).join(' ');
+    return headText.includes('nombre') && headText.includes('sector') && (headText.includes('tipoempleado') || headText.includes('turno') || headText.includes('metadiaria'));
+  }
+  function nextEmployeeId(){
+    const max = state.employees.reduce((m,e)=>{
+      const n = Number(String(e.id||'').match(/\d+/)?.[0] || 0);
+      return Math.max(m,n);
+    },100);
+    return 'EMP-' + String(max + 1).padStart(3,'0');
+  }
+  function inferEmployeeStatus(name, area, role, rawStatus=''){
+    const key = normName(name);
+    const a = norm(area);
+    const r = norm(role);
+    const s = norm(rawStatus);
+    if(s.includes('baja') || s.includes('inactivo')) return 'Baja';
+    if(/\b(yaniez|yanez|yañez|arganaraz|argañaraz|argaranaz|argaranas|argarañas)\b/.test(key)) return 'Baja';
+    if(s.includes('admin')) return 'Administrativa';
+    if(r.includes('admin') || a.includes('oficina') || a.includes('administr')) return 'Administrativa';
+    return 'Activo';
+  }
+  function importEmployeesMatrix(matrix, opts={}){
+    let headerRow = matrix.findIndex(row => row.map(canonicalHeader).includes('nombre'));
+    if(headerRow < 0) return {added:0,updated:0,skipped:0,total:0};
+    if(opts.replace) state.employees = [];
+    const headers = (matrix[headerRow] || []).map(canonicalHeader);
+    const idx = (...keys) => keys.map(canonicalHeader).map(k=>headers.indexOf(k)).find(i=>i>=0);
+    const indexes = {
+      name: idx('nombre','empleado','operario','operariosupervisor'),
+      area: idx('sector','area','área'),
+      turno: idx('turno'),
+      role: idx('tipoempleado','tipo empleado','rango','rol','tipo'),
+      supervisor: idx('supervisor','encargado'),
+      meta: idx('metadiaria','meta diaria','meta','objetivo','objetivodiario'),
+      status: idx('estado','status')
+    };
+    let added=0, updated=0, skipped=0;
+    for(let i=headerRow+1;i<matrix.length;i++){
+      const row = matrix[i] || [];
+      const get = key => indexes[key]===undefined ? '' : row[indexes[key]];
+      const name = cleanLine(get('name'));
+      if(!name){ skipped++; continue; }
+      const area = cleanLine(get('area')) || 'Sin sector';
+      const turno = cleanLine(get('turno')) || 'Mañana';
+      const role = cleanLine(get('role')) || 'Operario';
+      const supervisor = cleanLine(get('supervisor'));
+      const metaRaw = get('meta');
+      const metaDiaria = metaRaw === '' || metaRaw === undefined || metaRaw === null ? '' : num(metaRaw);
+      const rawStatus = cleanLine(get('status'));
+      const status = inferEmployeeStatus(name, area, role, rawStatus);
+      const existing = state.employees.find(e=>normName(e.name)===normName(name));
+      const payload = {name, area, turno, role, status, supervisor, metaDiaria};
+      if(existing){ Object.assign(existing, payload); updated++; }
+      else { state.employees.push({id:nextEmployeeId(), ...payload}); added++; }
+    }
+    return {added,updated,skipped,total:added+updated};
+  }
+  function importEmployeesRows(rows, opts={}){
+    if(opts.replace) state.employees = [];
+    let added=0, updated=0, skipped=0;
+    rows.forEach(row=>{
+      const normalized = Object.fromEntries(Object.entries(row).map(([k,v])=>[canonicalHeader(k),v]));
+      const get = (...keys) => keys.map(canonicalHeader).map(k=>normalized[k]).find(v=>v!==undefined&&v!==null&&v!=='') ?? '';
+      const name = cleanLine(get('nombre','empleado','operario','operario supervisor'));
+      if(!name){ skipped++; return; }
+      const area = cleanLine(get('sector','area')) || 'Sin sector';
+      const turno = cleanLine(get('turno')) || 'Mañana';
+      const role = cleanLine(get('tipoEmpleado','tipo empleado','rango','rol','tipo')) || 'Operario';
+      const supervisor = cleanLine(get('supervisor','encargado'));
+      const metaRaw = get('metaDiaria','meta diaria','meta','objetivo diario','objetivo');
+      const metaDiaria = metaRaw === '' ? '' : num(metaRaw);
+      const status = inferEmployeeStatus(name, area, role, cleanLine(get('estado','status')));
+      const existing = state.employees.find(e=>normName(e.name)===normName(name));
+      const payload = {name, area, turno, role, status, supervisor, metaDiaria};
+      if(existing){ Object.assign(existing, payload); updated++; }
+      else { state.employees.push({id:nextEmployeeId(), ...payload}); added++; }
+    });
+    return {added,updated,skipped,total:added+updated};
+  }
+
+  function findMessageDate(lines){
+    const explicit = lines.find(line => norm(line).includes('fecha') && flexDateToISO(line));
+    if(explicit) return flexDateToISO(explicit);
+    for(const line of lines){
+      if(/^\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?$/.test(cleanLine(line))){
+        const d = flexDateToISO(line);
+        if(d) return d;
+      }
+    }
+    return $('#prodDate')?.value || todayISO();
+  }
+  function nearestDateBefore(lines, index, fallback){
+    for(let i=index; i>=0; i--){
+      const l = cleanLine(lines[i]);
+      const n = norm(l);
+      if(n.includes('fecha') || /^\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?$/.test(l)){
+        const d = flexDateToISO(l);
+        if(d) return d;
+      }
+    }
+    return fallback || todayISO();
+  }
+  function sectionBoundary(line){
+    const n = norm(line);
+    return /^(resalado|sacudido|lavado a mano|lavado a maquina|lavado a máquina|salado maquina|salado máquina|seleccionado|se baja de prensa|en prensa|apilado)$/.test(n.replace(/^-\s*/,'')) || /^tipo\s/.test(n) || n.includes('total de sacos');
+  }
+  function parseProductionMessageAdvanced(text){
+    const rawLines = text.split(/\r?\n/);
+    const lines = rawLines.map(cleanLine).filter(Boolean);
+    const processed = new Set();
+    const production = [];
+    const saltMovements = [];
+    const pushProd = (date, employee, sector, qty, note='') => {
+      qty = num(qty);
+      if(!qty || /^(total|unidad|kilos|sacos|sal)$/i.test(cleanLine(employee))) return;
+      const emp = employee && employee !== 'Sin asignar' ? upsertEmployeeByName(employee, sector, 'Mañana', 'Operario') : 'Sin asignar';
+      production.push({id:uid('prev_'),date:date || todayISO(),employee:emp,sector:sector || 'Sin sector',qty,salt:0,source:'WhatsApp',note});
+    };
+    const pushSalt = (date, kg, dest, user='WhatsApp') => {
+      kg = num(kg);
+      if(!kg) return;
+      saltMovements.push({id:uid('salt_'),date:date || todayISO(),time:'',type:'Salida',kg,dest:dest || 'Producción',user:user || 'WhatsApp'});
+    };
+    let globalDate = findMessageDate(lines);
+
+    // 1) Empaque por grilla de tipos: Tipo AAA / Unidad / Kilos / Sacos + nombres al final.
+    let totalUnits = 0, totalSacos = 0, typeNotes = [], gridStart = -1, gridEnd = -1;
+    for(let i=0;i<lines.length;i++){
+      if(/^tipo\s+/i.test(norm(lines[i])) && lines.slice(i+1,i+6).some(x=>/^(unidad|kilos|sacos)\s*:/i.test(cleanLine(x)))){
+        if(gridStart < 0) gridStart = i;
+        let typeName = cleanLine(lines[i]).replace(/:$/,'');
+        let unidad = 0, kilos = 0, sacos = 0;
+        let j = i + 1;
+        while(j < lines.length && !/^tipo\s+/i.test(norm(lines[j])) && !norm(lines[j]).includes('total de sacos') && !norm(lines[j]).startsWith('seleccionado')){
+          const l = lines[j];
+          if(/^unidad\s*:/i.test(l)) unidad = num(l.split(':').slice(1).join(':'));
+          if(/^kilos\s*:/i.test(l)) kilos = num(l.split(':').slice(1).join(':'));
+          if(/^sacos\s*:?/i.test(l)) sacos = num(l.split(':').slice(1).join(':'));
+          processed.add(j); j++;
+        }
+        totalUnits += unidad; totalSacos += sacos;
+        if(unidad || kilos || sacos) typeNotes.push(`${typeName}: ${unidad||0} unid / ${kilos||0} kg / ${sacos||0} sacos`);
+        for(let k=i;k<j;k++) processed.add(k);
+        i = j - 1;
+        gridEnd = Math.max(gridEnd, j);
+      }
+    }
+    if(gridStart >= 0 && totalUnits > 0){
+      const gridDate = nearestDateBefore(lines, gridStart, globalDate);
+      let names = [];
+      for(let i=gridEnd;i<lines.length;i++){
+        const n = norm(lines[i]);
+        if(n.startsWith('seleccionado') || n.includes('se baja de prensa') || n==='en prensa' || n==='apilado') break;
+        if(n.includes('total de sacos')) { processed.add(i); continue; }
+        if(isNameLike(lines[i])) { names.push(lines[i]); processed.add(i); }
+      }
+      if(names.length){
+        const share = Math.round(totalUnits / names.length);
+        names.forEach(name => pushProd(gridDate, name, 'Empaque', share, `Asignado por grilla de tipos. Total unidades ${totalUnits}. Total sacos ${totalSacos}. ${typeNotes.join(' | ')}`));
+      }else{
+        pushProd(gridDate, 'Sin asignar', 'Empaque', totalUnits, `Grilla de tipos sin operarios asignados. Total sacos ${totalSacos}. ${typeNotes.join(' | ')}`);
+      }
+    }
+
+    // 2) Seleccionado individual por empleado: Nombre + Tipo A/D + Total.
+    for(let i=0;i<lines.length;i++){
+      if(!norm(lines[i]).startsWith('seleccionado')) continue;
+      processed.add(i);
+      let sectionDate = flexDateToISO(lines[i]) || globalDate;
+      let currentName = '', typeParts = [], total = 0, sumTypes = 0;
+      const flush = () => {
+        const finalTotal = total || sumTypes;
+        if(currentName && finalTotal){ pushProd(sectionDate, currentName, 'Seleccionado', finalTotal, typeParts.join(' | ')); }
+        currentName = ''; typeParts = []; total = 0; sumTypes = 0;
+      };
+      for(let j=i+1;j<lines.length;j++){
+        const l = lines[j]; const n = norm(l);
+        if(n.includes('se baja de prensa') || n==='en prensa' || n==='apilado' || /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(l)) { flush(); break; }
+        processed.add(j);
+        if(isNameLike(l)){ flush(); currentName = l; continue; }
+        let m = l.match(/^tipo\s*([^:]+):\s*([\d.,]+)/i);
+        if(m){ typeParts.push(`Tipo ${m[1].trim()}: ${m[2]}`); sumTypes += num(m[2]); continue; }
+        m = l.match(/^total\s*:?\s*([\d.,]+)/i);
+        if(m){ total = num(m[1]); continue; }
+      }
+      flush();
+    }
+
+    // 3) Prensa / Apilado por línea de detalle.
+    for(let i=0;i<lines.length;i++){
+      const n = norm(lines[i]);
+      if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(lines[i])) { globalDate = flexDateToISO(lines[i]) || globalDate; processed.add(i); }
+      let sector = '';
+      if(n.includes('se baja de prensa')) sector = 'Se baja de prensa';
+      else if(n === 'en prensa') sector = 'En prensa';
+      else if(n === 'apilado') sector = 'Apilado';
+      if(!sector) continue;
+      processed.add(i);
+      for(let j=i+1;j<lines.length;j++){
+        const l = lines[j]; const nn = norm(l);
+        if(nn.includes('se baja de prensa') || nn==='en prensa' || nn==='apilado' || nn.startsWith('seleccionado')) break;
+        if(/^total/i.test(nn)){ processed.add(j); continue; }
+        if(sector==='Apilado'){
+          const m = l.match(/^pallet\s*(\d+)\s*:\s*([\d.,]+)\s*(.*)$/i);
+          if(m){ pushProd(globalDate,'Sin asignar',sector,num(m[2]),`Pallet ${m[1]} · ${m[3].trim()}`); processed.add(j); }
+        }else{
+          const m = l.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\s+([\d.,]+)\s+(.+)$/);
+          if(m){ pushProd(globalDate,'Sin asignar',sector,num(m[2]),`${m[1]} · ${m[3]}`); processed.add(j); }
+        }
+      }
+    }
+
+    // 4) Sectores clásicos: Resalado / Sacudido / Lavado a mano / Lavado a máquina.
+    let sector = 'Sin sector', lastEmployee = '', plant = '';
+    const knownPlants = ['recreo','delta','deltacar','alba','brillante','cooperativa parana','cooperativa paraná','suipacha','santa ines','santa inés'];
+    for(let i=0;i<lines.length;i++){
+      if(processed.has(i)) continue;
+      let l = lines[i]; let n = norm(l);
+      const dateCandidate = flexDateToISO(l);
+      if(dateCandidate && (norm(l).includes('fecha') || /^\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?$/.test(l))){ globalDate = dateCandidate; continue; }
+      const cleanHeader = cleanLine(l).replace(/^[-–]\s*/,'');
+      const nh = norm(cleanHeader);
+      if(['resalado','sacudido','lavado a mano','lavado a maquina','lavado a máquina','salado maquina','salado máquina'].includes(nh)){
+        sector = cleanHeader; plant=''; lastEmployee=''; continue;
+      }
+      if(knownPlants.includes(n)){ plant = l; continue; }
+      let m = l.match(/^sal\s*:?\s*([\d.,]+)/i);
+      if(m){ pushSalt(globalDate, m[1], sector, 'WhatsApp'); continue; }
+      if(/^total\b/i.test(n) || /^fecha\b/i.test(n)) continue;
+      m = l.match(/^([^:]+):\s*(?:sal\s*)?([\d.,]+)/i);
+      if(m){
+        const who = cleanLine(m[1]);
+        if(/sal/i.test(l.split(':').slice(1).join(':'))){ lastEmployee = who; pushSalt(globalDate,m[2],sector,who); continue; }
+        lastEmployee = who;
+        pushProd(globalDate, who, sector, m[2], 'Mensaje WhatsApp');
+        continue;
+      }
+      m = l.match(/^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s+([\d.,]+)(?:\s*(.*))?$/);
+      if(m && sector && sector !== 'Sin sector'){
+        pushProd(globalDate, lastEmployee || 'Sin asignar', sector, m[2], `${plant ? plant + ' · ' : ''}${m[1]} ${m[3]||''}`.trim());
+      }
+    }
+    return {production, saltMovements};
+  }
 
   const demo = () => ({
     currentPage:'dashboard',
@@ -444,7 +811,7 @@
       <div style="height:18px"></div>
       <div class="grid-2">
         <div class="import-box">
-          <div class="import-head"><div class="icon">${Icons.file}</div><div><strong>Importar desde Excel / CSV</strong><p class="muted" style="margin:4px 0 0">Lee columnas como Fecha, Empleado, Sector, Cantidad, Sal.</p></div></div>
+          <div class="import-head"><div class="icon">${Icons.file}</div><div><strong>Importar desde Excel / CSV</strong><p class="muted" style="margin:4px 0 0">Lee producción genérica y también detecta automáticamente el Excel de Presentes.</p></div></div>
           <input type="file" id="fileImport" accept=".xlsx,.xls,.csv">
           <button class="btn" id="processFile">Procesar archivo</button>
         </div>
@@ -462,7 +829,7 @@
   }
   function tablePreview(){
     if(!state.preview.length) return `<div class="empty">No hay registros pendientes. Cargá manualmente, importá Excel/CSV o procesá un mensaje.</div>`;
-    return `<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Empleado</th><th>Sector</th><th class="right">Cantidad</th><th class="right">Sal</th><th>Origen</th><th class="center">Acciones</th></tr></thead><tbody>${state.preview.map(r=>`<tr><td>${isoToAR(r.date)}</td><td>${esc(r.employee||'-')}</td><td>${esc(r.sector)}</td><td class="right">${moneyish(r.qty)}</td><td class="right">${moneyish(r.salt)}</td><td>${pill(r.source||'Manual')}</td><td class="center"><button class="icon-btn danger-text" data-del-preview="${r.id}">${Icons.trash}</button></td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Empleado</th><th>Sector</th><th class="right">Cantidad</th><th class="right">Sal</th><th>Origen</th><th>Observación</th><th class="center">Acciones</th></tr></thead><tbody>${state.preview.map(r=>`<tr><td>${isoToAR(r.date)}</td><td>${esc(r.employee||'-')}</td><td>${esc(r.sector)}</td><td class="right">${moneyish(r.qty)}</td><td class="right">${moneyish(r.salt)}</td><td>${pill(r.source||'Manual')}</td><td>${esc(r.note||'-')}</td><td class="center"><button class="icon-btn danger-text" data-del-preview="${r.id}">${Icons.trash}</button></td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function renderPresentismo(){
@@ -480,6 +847,12 @@
             <div class="field"><label>Turno</label><select id="attFilterTurno"><option>Todos</option><option>Mañana</option><option>Tarde</option><option>Intermedio</option><option>Cortado</option><option>Noche</option><option>Administrativo</option></select></div>
             <div class="field"><label>Estado</label><select id="attFilterEstado"><option>Todos</option><option>Presente</option><option>Ausente</option><option>Retraso</option><option>Salida anticipada</option></select></div>
             <button class="btn primary" id="applyAtt">Aplicar</button>
+          </div>
+          <div style="height:18px"></div>
+          <div class="import-box" style="box-shadow:none">
+            <div class="import-head"><div class="icon">${Icons.file}</div><div><strong>Importar archivo de presentes</strong><p class="muted" style="margin:4px 0 0">Lee el Excel real: FECHA, OPERARIO / SUPERVISOR, ENTRADA, SALIDA, PRESENTE y AUSENTE.</p></div></div>
+            <input type="file" id="attendanceFile" accept=".xlsx,.xls">
+            <button class="btn" id="processAttendanceFile">Procesar presentes</button>
           </div>
           <div style="height:18px"></div>
           <div class="section-title"><div><h3>Cargar fichaje</h3><p>Entrada y salida exacta por empleado.</p></div></div>
@@ -635,6 +1008,16 @@
   function renderEmpleados(){
     return `${hero('Empleados','Gestión clara del personal', `<button class="btn" id="exportEmployees">Exportar empleados</button><button class="btn primary" id="addEmployeeOpen">+ Agregar</button>`)}
       <div class="panel">
+        <div class="section-title"><div><h3>Importar empleados desde Excel</h3><p>El sistema reconoce columnas como nombre, sector, turno, tipoEmpleado, supervisor y metaDiaria.</p></div></div>
+        <div class="form-grid compact">
+          <div class="field"><label>Archivo de empleados</label><input type="file" id="employeesFile" accept=".xlsx,.xls,.csv"></div>
+          <label class="checkline"><input type="checkbox" id="replaceEmployees"> Reemplazar lista actual antes de importar</label>
+          <button class="btn primary" id="processEmployeesFile">Importar empleados</button>
+          <button class="btn" id="downloadEmployeeTemplate">Descargar modelo CSV</button>
+        </div>
+        <div class="hint"><strong>Formato esperado:</strong> nombre | sector | turno | tipoEmpleado | supervisor | metaDiaria. Si un empleado ya existe, se actualiza; si no existe, se agrega.</div>
+      </div>
+      <div class="panel">
         <div class="employee-actions">
           <button class="btn primary" id="addEmployeeOpen2">+ Agregar</button>
           <button class="btn" id="editSelectedHint">Modificar</button>
@@ -645,7 +1028,8 @@
       </div>`;
   }
   function tableEmployees(){
-    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>Nombre</th><th>Área</th><th>Turno</th><th>Rango</th><th>Estado</th><th class="center">Acciones</th></tr></thead><tbody>${state.employees.map(e=>`<tr><td>${esc(e.id)}</td><td>${esc(e.name)}</td><td>${esc(e.area)}</td><td>${esc(e.turno)}</td><td>${esc(e.role)}</td><td>${pill(e.status)}</td><td class="center"><button class="icon-btn" data-edit-emp="${e.id}">${Icons.edit}</button> <button class="icon-btn ${e.status==='Baja'?'':'danger-text'}" data-toggle-emp="${e.id}">${e.status==='Baja'?Icons.check:Icons.trash}</button></td></tr>`).join('')}</tbody></table></div>`;
+    if(!state.employees.length) return `<div class="empty">Todavía no hay empleados cargados. Podés importarlos desde Excel o agregarlos manualmente.</div>`;
+    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>Nombre</th><th>Sector</th><th>Turno</th><th>Tipo</th><th>Supervisor</th><th class="right">Meta diaria</th><th>Estado</th><th class="center">Acciones</th></tr></thead><tbody>${state.employees.map(e=>`<tr><td>${esc(e.id)}</td><td>${esc(e.name)}</td><td>${esc(e.area||'')}</td><td>${esc(e.turno||'')}</td><td>${esc(e.role||'')}</td><td>${esc(e.supervisor||'-')}</td><td class="right">${e.metaDiaria!==undefined && e.metaDiaria!=='' ? moneyish(e.metaDiaria) : '-'}</td><td>${pill(e.status||'Activo')}</td><td class="center"><button class="icon-btn" data-edit-emp="${e.id}">${Icons.edit}</button> <button class="icon-btn ${e.status==='Baja'?'':'danger-text'}" data-toggle-emp="${e.id}">${e.status==='Baja'?Icons.check:Icons.trash}</button></td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function renderConfig(){
@@ -686,6 +1070,9 @@
     $('#clearPreview') && ($('#clearPreview').onclick = () => {state.preview=[]; save(); render(); toast('Vista previa limpiada.');});
     $('#processMsg') && ($('#processMsg').onclick = processMessage);
     $('#processFile') && ($('#processFile').onclick = processFile);
+    $('#processAttendanceFile') && ($('#processAttendanceFile').onclick = processAttendanceFile);
+    $('#processEmployeesFile') && ($('#processEmployeesFile').onclick = processEmployeesFile);
+    $('#downloadEmployeeTemplate') && ($('#downloadEmployeeTemplate').onclick = downloadEmployeeTemplate);
     $$('[data-del-preview]').forEach(b=>b.onclick=()=>{state.preview=state.preview.filter(r=>r.id!==b.dataset.delPreview);save();render();});
 
     $('#applyAtt') && ($('#applyAtt').onclick = render);
@@ -733,46 +1120,103 @@
   function processMessage(){
     const text = $('#messageImport').value;
     if(!text.trim()){toast('Pegá un mensaje para procesar.');return;}
-    const lines = text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-    let sector = 'Sin sector';
-    const dateLine = lines.find(l=>/fecha|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/i.test(l));
-    const date = arToISO(dateLine) || $('#prodDate')?.value || todayISO();
-    let added = 0;
-    for(const line of lines){
-      if(/^[-–]?\s*[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+\s*$/i.test(line) && !line.includes(':')){ sector = line.replace(/^[-–]\s*/,'').trim(); continue; }
-      if(/sal\s*:/i.test(line)) continue;
-      const m = line.match(/^([^:]+):\s*([\d.,]+)/);
-      if(m){
-        state.preview.push({id:uid('prev_'),date,employee:m[1].trim(),sector,qty:num(m[2]),salt:0,source:'WhatsApp',note:''});
-        added++;
-      }
-    }
-    save(); render(); toast(`Se procesaron ${added} registros del mensaje.`);
+    const parsed = parseProductionMessageAdvanced(text);
+    const prodCount = parsed.production.length;
+    const saltCount = parsed.saltMovements.length;
+    if(!prodCount && !saltCount){toast('No encontré producción ni sal para cargar. Revisá el formato del mensaje.');return;}
+    state.preview.push(...parsed.production);
+    state.salt.push(...parsed.saltMovements);
+    save(); render(); toast(`Mensaje procesado: ${prodCount} producción / ${saltCount} sal.`);
   }
   async function processFile(){
     const f = $('#fileImport').files[0];
     if(!f){toast('Seleccioná un archivo.');return;}
     const ext = f.name.split('.').pop().toLowerCase();
-    let rows = [];
+    let rows = [], matrix = [];
     if(ext==='csv'){
       const text = await f.text(); rows = parseCSV(text);
     }else if(window.XLSX){
       const data = await f.arrayBuffer();
-      const wb = XLSX.read(data,{type:'array'}); const ws = wb.Sheets[wb.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(ws,{defval:''});
+      const wb = XLSX.read(data,{type:'array', cellDates:false});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      matrix = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+      if(isEmployeeMatrix(matrix)){
+        const r = importEmployeesMatrix(matrix,{replace:false});
+        save(); render(); toast(`Empleados importados: ${r.added} nuevos / ${r.updated} actualizados.`);
+        return;
+      }
+      if(isAttendanceMatrix(matrix)){
+        const r = importAttendanceMatrix(matrix);
+        save(); render(); toast(`Presentes importados: ${r.added} fichajes (${r.present} presentes / ${r.absent} ausentes).`);
+        return;
+      }
+      rows = XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
     }else{ toast('No se pudo cargar el lector Excel. Probá CSV.'); return; }
     let added=0;
     rows.forEach(row=>{
-      const get = (...keys) => keys.map(k=>row[k]).find(v=>v!==undefined&&v!=='') ?? '';
-      const date = arToISO(get('Fecha','fecha','Día','Dia','date')) || todayISO();
-      const employee = get('Empleado','Operario','Nombre','employee');
+      const normalized = Object.fromEntries(Object.entries(row).map(([k,v])=>[norm(k),v]));
+      const get = (...keys) => keys.map(k=>normalized[norm(k)] ?? row[k]).find(v=>v!==undefined&&v!=='') ?? '';
+      const date = flexDateToISO(get('Fecha','fecha','Día','Dia','date')) || todayISO();
+      const employee = get('Empleado','Operario','Operario / Supervisor','Nombre','employee');
       const sector = get('Sector','Línea','Linea','Área','Area') || 'Sin sector';
-      const qty = num(get('Cantidad','Producción','Produccion','Unidades','Kilos','kg'));
+      const qty = num(get('Cantidad','Producción','Produccion','Unidades','Unidad','Kilos','kg'));
       const salt = num(get('Sal','Sal usada','sal'));
-      if(qty){ state.preview.push({id:uid('prev_'),date,employee,sector,qty,salt,source:'Excel',note:''}); added++; }
+      if(qty){
+        const emp = employee ? upsertEmployeeByName(employee,sector,'Mañana','Operario') : '';
+        state.preview.push({id:uid('prev_'),date,employee:emp,sector,qty,salt,source:'Excel',note:''});
+        added++;
+      }
     });
     save(); render(); toast(`Archivo procesado: ${added} registros a vista previa.`);
   }
+  async function processAttendanceFile(){
+    const f = $('#attendanceFile').files[0];
+    if(!f){toast('Seleccioná el Excel de presentes.');return;}
+    if(!window.XLSX){toast('No se pudo cargar el lector Excel.');return;}
+    const data = await f.arrayBuffer();
+    const wb = XLSX.read(data,{type:'array', cellDates:false});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const matrix = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+    if(!isAttendanceMatrix(matrix)){toast('El archivo no parece ser el formato de Presentes de la fecha.');return;}
+    const r = importAttendanceMatrix(matrix);
+    save(); render(); toast(`Presentes importados: ${r.added} fichajes (${r.present} presentes / ${r.absent} ausentes).`);
+  }
+  async function processEmployeesFile(){
+    const f = $('#employeesFile').files[0];
+    if(!f){toast('Seleccioná la planilla de empleados.');return;}
+    const replace = !!$('#replaceEmployees')?.checked;
+    const ext = f.name.split('.').pop().toLowerCase();
+    let result;
+    try{
+      if(ext==='csv'){
+        const text = await f.text();
+        result = importEmployeesRows(parseCSV(text), {replace});
+      }else{
+        if(!window.XLSX){toast('No se pudo cargar el lector Excel.');return;}
+        const data = await f.arrayBuffer();
+        const wb = XLSX.read(data,{type:'array', cellDates:false});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const matrix = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        if(!isEmployeeMatrix(matrix)){
+          toast('El archivo no parece ser una planilla de empleados. Revisá que tenga columna nombre.');
+          return;
+        }
+        result = importEmployeesMatrix(matrix,{replace});
+      }
+      save(); render(); toast(`Empleados importados: ${result.added} nuevos / ${result.updated} actualizados / ${result.skipped} omitidos.`);
+    }catch(e){
+      console.error(e);
+      toast('No se pudo importar la planilla de empleados.');
+    }
+  }
+  function downloadEmployeeTemplate(){
+    const rows = [
+      {nombre:'APELLIDO NOMBRE',sector:'Salado',turno:'Día',tipoEmpleado:'Operario',supervisor:'SUPERVISOR NOMBRE',metaDiaria:250},
+      {nombre:'SUPERVISOR NOMBRE',sector:'Salado',turno:'Día',tipoEmpleado:'Supervisor',supervisor:'SUPERVISOR NOMBRE',metaDiaria:250}
+    ];
+    exportCSV('modelo_empleados.csv', rows);
+  }
+
   function parseCSV(text){
     const lines = text.split(/\r?\n/).filter(Boolean); if(!lines.length) return [];
     const sep = lines[0].includes(';')?';':',';
@@ -805,15 +1249,16 @@
   }
 
   function openEmployee(id){
-    const e = state.employees.find(x=>x.id===id) || {id:'EMP-'+String(state.employees.length+101).padStart(3,'0'),name:'',area:'Producción Línea 1',turno:'Mañana',role:'Operario',status:'Activo'};
-    openModal(`<h3>${id?'Editar empleado':'Agregar empleado'}</h3><p>Administrá datos básicos, turno, rango y estado.</p><div class="modal-grid">
+    const e = state.employees.find(x=>x.id===id) || {id:nextEmployeeId(),name:'',area:'Producción Línea 1',turno:'Día',role:'Operario',status:'Activo',supervisor:'',metaDiaria:''};
+    openModal(`<h3>${id?'Editar empleado':'Agregar empleado'}</h3><p>Administrá datos básicos, turno, rango, supervisor, meta y estado.</p><div class="modal-grid">
       <div class="field"><label>ID</label><input id="empId" value="${esc(e.id)}"></div><div class="field"><label>Nombre</label><input id="empName" value="${esc(e.name)}"></div>
-      <div class="field"><label>Área</label><input id="empArea" value="${esc(e.area)}"></div><div class="field"><label>Turno</label><select id="empTurno"><option>Mañana</option><option>Tarde</option><option>Intermedio</option><option>Cortado</option><option>Noche</option><option>Administrativo</option></select></div>
-      <div class="field"><label>Rango</label><select id="empRole"><option>Operario</option><option>Operaria</option><option>Supervisor</option><option>Supervisora</option><option>Administrativa</option></select></div><div class="field"><label>Estado</label><select id="empStatus"><option>Activo</option><option>Administrativa</option><option>Baja</option></select></div>
+      <div class="field"><label>Sector</label><input id="empArea" value="${esc(e.area||'')}"></div><div class="field"><label>Turno</label><select id="empTurno"><option>Día</option><option>Mañana</option><option>Tarde</option><option>Intermedio</option><option>Cortado</option><option>Noche</option><option>Administrativo</option></select></div>
+      <div class="field"><label>Tipo empleado</label><select id="empRole"><option>Operario</option><option>Operaria</option><option>Supervisor</option><option>Supervisora</option><option>Administrativo</option><option>Administrativa</option></select></div><div class="field"><label>Estado</label><select id="empStatus"><option>Activo</option><option>Administrativa</option><option>Baja</option></select></div>
+      <div class="field"><label>Supervisor</label><input id="empSupervisor" value="${esc(e.supervisor||'')}"></div><div class="field"><label>Meta diaria</label><input type="number" id="empMeta" value="${esc(e.metaDiaria||'')}"></div>
     </div><div class="modal-actions"><button class="btn" data-close>Cerrar</button><button class="btn primary" id="saveEmp">Guardar</button></div>`);
-    $('#empTurno').value = e.turno; $('#empRole').value = e.role; $('#empStatus').value = e.status;
+    $('#empTurno').value = e.turno || 'Día'; $('#empRole').value = e.role || 'Operario'; $('#empStatus').value = e.status || 'Activo';
     $('#saveEmp').onclick = ()=>{
-      const ne = {id:$('#empId').value.trim(),name:$('#empName').value.trim(),area:$('#empArea').value.trim(),turno:$('#empTurno').value,role:$('#empRole').value,status:$('#empStatus').value};
+      const ne = {id:$('#empId').value.trim(),name:$('#empName').value.trim(),area:$('#empArea').value.trim(),turno:$('#empTurno').value,role:$('#empRole').value,status:$('#empStatus').value,supervisor:$('#empSupervisor').value.trim(),metaDiaria:$('#empMeta').value===''?'':num($('#empMeta').value)};
       if(!ne.id||!ne.name){toast('Completá ID y nombre.');return;}
       if(id){ const idx=state.employees.findIndex(x=>x.id===id); state.employees[idx]=ne; } else { state.employees.push(ne); }
       save(); closeModal(); render(); toast('Empleado guardado.');
