@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel Integral de Planta</title>
+  <!-- Versión actualizada: sal separada por procesos y frigoríficos -->
 
   <!-- Librerías externas opcionales. En GitHub Pages cargan correctamente con internet. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -911,14 +912,14 @@
                 <div class="import-icon">📊</div>
                 <div style="flex:1;">
                   <h4>Archivo de producción / presentes</h4>
-                  <p>Lee el Excel combinado de producción + presentes: Fecha, Empleado, Entrada (E), Salida (S), Sector y Cantidad.</p>
+                  <p>Lee el Excel combinado de producción + presentes: Fecha, Empleado, Entrada (E), Salida (S), Sector y Cantidad. Los empleados fijos que no aparezcan con fichaje quedan ausentes.</p>
                 </div>
                 <label class="btn btn-secondary">
                   Seleccionar archivo
                   <input hidden type="file" accept=".xlsx,.xls,.csv" onchange="importProductionFile(event)">
                 </label>
               </div>
-              <div class="note" style="margin-top:14px;">ℹ️ <span>El sistema toma la producción y también genera el presentismo con E/S. Si alguien produce y no existe en empleados, se crea como <strong>Destajo</strong> y queda presente automático.</span></div>
+              <div class="note" style="margin-top:14px;">ℹ️ <span>El sistema toma la producción y genera el presentismo con E/S. Si un empleado fijo no aparece con fichaje en la fecha importada, queda <strong>Ausente</strong>. Si alguien produce y no existe en empleados, se crea como <strong>Destajo</strong> y queda presente automático.</span></div>
             </div>
             <div class="card">
               <div class="section-head"><div><h3>Importar desde WhatsApp</h3><p>Pegá el mensaje de producción y procesalo.</p></div></div>
@@ -964,8 +965,9 @@
               <div class="field"><label>Estado</label><select id="attFilterStatus" onchange="renderAttendance()"><option value="">Todos</option><option>Presente</option><option>Ausente</option><option>Retraso</option><option>Salida anticipada</option><option>Horas extra</option></select></div>
               <button class="btn btn-primary" onclick="setAttendanceThisWeek()">Semana</button>
               <button class="btn btn-secondary" onclick="setAttendanceThisMonth()">Mes</button>
+              <button class="btn btn-secondary" onclick="completeAbsencesForVisiblePeriod()">Completar ausentes</button>
             </div>
-            <div class="note" style="margin-bottom:14px;">ℹ️ <span>Regla horaria: general 08:00 a 17:00, horas extra hasta 19:00. Acciardi se calcula aparte: 12:00 a 22:00.</span></div>
+            <div class="note" style="margin-bottom:14px;">ℹ️ <span>Regla horaria: general 08:00 a 17:00 con tolerancia de 10 minutos. Después de 17:10 cuenta como horas extra; antes de 16:50 cuenta como salida anticipada. Acciardi se calcula aparte: 12:00 a 22:00.</span></div>
             <div class="grid grid-4" id="attendanceSummary" style="margin-bottom:14px;"></div>
             <div class="table-wrap"><table id="attendanceTable"></table></div>
           </div>
@@ -1016,10 +1018,11 @@
         <!-- SAL -->
         <section class="view" id="view-sal">
           <div class="grid grid-4" id="saltKpis"></div>
+          <div class="note" style="margin-top:14px;">ℹ️ <span><strong>Separación importante:</strong> la sal usada en procesos de Santa Faz se calcula aparte. La sal que sale a un frigorífico, por ejemplo <strong>DELTACAR</strong>, queda como <strong>sal enviada a frigorífico</strong> y no se mezcla con el consumo de producción.</span></div>
           <div class="grid grid-2" style="margin-top:18px;">
-            <div class="card chart-box"><div class="section-head"><div><h3>Consumo diario de sal</h3><p>Últimos registros de uso</p></div></div><canvas id="saltChart"></canvas></div>
+            <div class="card chart-box"><div class="section-head"><div><h3>Consumo diario de sal</h3><p>Procesos internos vs. salida a frigoríficos</p></div></div><canvas id="saltChart"></canvas></div>
             <div class="card">
-              <div class="section-head"><div><h3>Nuevo movimiento</h3><p>Entrada o salida de sal con origen/destino.</p></div></div>
+              <div class="section-head"><div><h3>Nuevo movimiento</h3><p>Elegí si corresponde a proceso interno o a frigorífico desde el destino.</p></div></div>
               <div class="form-row">
                 <div class="field"><label>Fecha</label><input type="date" id="saltDate"></div>
                 <div class="field"><label>Tipo</label><select id="saltType"><option>Entrada</option><option>Salida</option></select></div>
@@ -1028,10 +1031,21 @@
                 <div class="field"><label>Usuario</label><input id="saltUser" placeholder="Ej: Sistema"></div>
                 <button class="btn btn-primary" onclick="addSaltMove()">Guardar movimiento</button>
               </div>
+              <div class="note" style="margin-top:12px;">📌 <span>Si seleccionás <strong>Deltacar</strong> u otro frigorífico, se registra como <strong>Salida a frigorífico</strong>. Si seleccionás <strong>Producción Resalado</strong>, <strong>Producción Lavado</strong>, etc., se registra como <strong>Uso en proceso</strong>.</span></div>
+            </div>
+          </div>
+          <div class="grid grid-2" style="margin-top:18px;">
+            <div class="card">
+              <div class="section-head"><div><h3>Sal usada por proceso</h3><p>Solo consumo interno de producción.</p></div></div>
+              <div class="table-wrap"><table id="saltProcessTable"></table></div>
+            </div>
+            <div class="card">
+              <div class="section-head"><div><h3>Sal enviada por frigorífico</h3><p>Deltacar y otros destinos separados de Santa Faz.</p></div></div>
+              <div class="table-wrap"><table id="saltFridgeTable"></table></div>
             </div>
           </div>
           <div class="card" style="margin-top:18px;">
-            <div class="section-head"><div><h3>Movimientos recientes</h3><p>Registro de entradas y salidas.</p></div><button class="btn btn-secondary btn-sm" onclick="exportTable('salt')">⬇ Exportar sal</button></div>
+            <div class="section-head"><div><h3>Movimientos recientes</h3><p>Registro de entradas, usos en proceso y salidas a frigoríficos.</p></div><button class="btn btn-secondary btn-sm" onclick="exportTable('salt')">⬇ Exportar sal</button></div>
             <div class="table-wrap"><table id="saltTable"></table></div>
           </div>
         </section>
@@ -1150,9 +1164,10 @@
           {id: uid(), date: today, employee:'Lucía Martínez', shift:'Intermedio', in:'07:05', out:'13:10', status:'Salida anticipada', obs:'Salida por turno médico'}
         ],
         salt: [
-          {id: uid(), date: today, type:'Entrada', qty:120, origin:'Depósito central', user:'Sistema'},
-          {id: uid(), date: today, type:'Salida', qty:50, origin:'Producción Línea 2', user:'Sistema'},
-          {id: uid(), date: addDaysISO(today,-1), type:'Salida', qty:65, origin:'Producción Línea 1', user:'Sistema'}
+          {id: uid(), date: today, type:'Entrada', qty:120, origin:'Depósito central', scope:'Ingreso', user:'Sistema'},
+          {id: uid(), date: today, type:'Salida', qty:50, origin:'Producción Línea 2', scope:'Proceso', user:'Sistema'},
+          {id: uid(), date: addDaysISO(today,-1), type:'Salida', qty:65, origin:'Producción Línea 1', scope:'Proceso', user:'Sistema'},
+          {id: uid(), date: today, type:'Salida', qty:30, origin:'Deltacar', scope:'Frigorífico', user:'Sistema'}
         ]
       };
     }
@@ -1427,13 +1442,66 @@
 
     function statusBadge(status) {
       const map = {
-        'Presente':'green', 'Activo':'green', 'Entrada':'green', 'Óptimo':'green',
+        'Presente':'green', 'Activo':'green', 'Entrada':'green', 'Óptimo':'green', 'Ingreso':'green',
         'Ausente':'red', 'Baja':'red', 'Salida':'red', 'Revisar':'red',
         'Retraso':'amber', 'Regular':'amber',
-        'Salida anticipada':'blue', 'Horas extra':'blue', 'Administrativo':'blue', 'Destajo':'purple',
+        'Salida anticipada':'blue', 'Horas extra':'blue', 'Administrativo':'blue', 'Destajo':'purple', 'Frigorífico':'purple', 'Salida a frigorífico':'purple', 'Proceso':'blue', 'Uso en proceso':'blue',
         'Inactivo':'gray'
       };
       return `<span class="badge ${map[status] || 'gray'}">${escapeHtml(status)}</span>`;
+    }
+
+    function normalizePlantAlias(value) {
+      const raw = String(value || '').trim();
+      const n = normalizeText(raw);
+      if (!n) return '';
+      if (n === 'delta' || n.includes('deltacar') || n.includes('delta car')) return 'Deltacar';
+      const plants = state.config?.plants || [];
+      const found = plants.find(p => {
+        const pn = normalizeText(p);
+        return n === pn || n.includes(pn) || pn.includes(n);
+      });
+      return found || raw;
+    }
+
+    function isFrigorificoDestination(origin) {
+      const n = normalizeText(origin);
+      if (!n) return false;
+      if (n === 'delta' || n.includes('deltacar') || n.includes('delta car')) return true;
+      return (state.config?.plants || []).some(p => {
+        const pn = normalizeText(p);
+        return pn && (n === pn || n.includes(pn));
+      });
+    }
+
+    function classifySaltMovement(move) {
+      const type = String(move?.type || '').trim();
+      const origin = String(move?.origin || move?.destination || '').trim();
+      if (move?.scope) return move.scope;
+      if (type === 'Entrada') return 'Ingreso';
+      if (/^producci[oó]n\s+/i.test(origin) || /^proceso\s+/i.test(origin)) return 'Proceso';
+      if (isFrigorificoDestination(origin)) return 'Frigorífico';
+      return 'Proceso';
+    }
+
+    function saltLabel(move) {
+      const origin = String(move?.origin || '').trim();
+      const scope = classifySaltMovement(move);
+      if (scope === 'Frigorífico') return normalizePlantAlias(origin);
+      if (scope === 'Proceso') return origin.replace(/^Producci[oó]n\s+/i, '') || 'Proceso interno';
+      return origin || 'Ingreso stock';
+    }
+
+    function isProcessSalt(move) { return move?.type === 'Salida' && classifySaltMovement(move) === 'Proceso'; }
+    function isFridgeSalt(move) { return move?.type === 'Salida' && classifySaltMovement(move) === 'Frigorífico'; }
+
+    function groupSaltByLabel(rows) {
+      const out = {};
+      rows.forEach(r => {
+        const label = saltLabel(r);
+        out[label] = (out[label] || 0) + Number(r.qty || 0);
+      });
+      return Object.entries(out).sort((a,b)=>b[1]-a[1]);
     }
 
     function renderDashboard() {
@@ -1441,15 +1509,19 @@
       const prodRows = state.production.filter(p => inRange(p.date, range.from, range.to));
       const attRows = state.attendance.filter(a => inRange(a.date, range.from, range.to) && !isSundayISO(a.date));
       const saltRows = state.salt.filter(s => s.type === 'Salida' && inRange(s.date, range.from, range.to));
+      const processSaltRows = saltRows.filter(isProcessSalt);
+      const fridgeSaltRows = saltRows.filter(isFridgeSalt);
       const prodTotal = prodRows.reduce((a,p)=>a+Number(p.qty||0),0);
       const present = attRows.filter(a => a.status !== 'Ausente').length;
       const absent = attRows.filter(a => a.status === 'Ausente').length;
-      const saltUsed = saltRows.reduce((a,s)=>a+Number(s.qty||0),0);
+      const saltUsed = processSaltRows.reduce((a,s)=>a+Number(s.qty||0),0);
+      const saltToFrigo = fridgeSaltRows.reduce((a,s)=>a+Number(s.qty||0),0);
       document.getElementById('dashboardKpis').innerHTML = [
         kpi('Producción del período', number(prodTotal), 'unidades / kg', 'prod', 'blue'),
         kpi('Presentes', number(present), 'registros del período', 'users', 'green'),
         kpi('Ausentes', number(absent), 'registros del período', 'alert', 'red'),
-        kpi('Sal usada', number(saltUsed), 'bolsas / kg del período', 'salt', 'blue')
+        kpi('Sal usada en procesos', number(saltUsed), 'Santa Faz / producción', 'salt', 'blue'),
+        kpi('Sal enviada a frigoríficos', number(saltToFrigo), 'Deltacar y otros destinos', 'salt', 'purple')
       ].join('');
 
       const byEmp = {};
@@ -1477,6 +1549,8 @@
       const prodRows = state.production.filter(p => inRange(p.date, range.from, range.to));
       const attRows = state.attendance.filter(a => inRange(a.date, range.from, range.to) && !isSundayISO(a.date));
       const saltRows = state.salt.filter(s => s.type==='Salida' && inRange(s.date, range.from, range.to));
+      const processSaltRows = saltRows.filter(isProcessSalt);
+      const fridgeSaltRows = saltRows.filter(isFridgeSalt);
       const prod = groupByDate(prodRows, 'qty');
       makeChart('productionChart', 'line', {
         labels: prod.map(([d])=>formatDate(d)),
@@ -1490,10 +1564,16 @@
         datasets:[{ data:[present, absent], borderWidth:0 }]
       }, { cutout:'68%' });
 
-      const salt = groupByDate(saltRows, 'qty');
+      const saltProcess = groupByDate(processSaltRows, 'qty');
+      const saltFridge = groupByDate(fridgeSaltRows, 'qty');
+      const saltLabels = [...new Set([...saltProcess.map(([d])=>d), ...saltFridge.map(([d])=>d)])].sort((a,b)=>a.localeCompare(b));
+      const valFor = (series, d) => (series.find(x=>x[0]===d)?.[1] || 0);
       makeChart('saltChart', 'line', {
-        labels: salt.map(([d])=>formatDate(d)),
-        datasets:[{ label:'Consumo de sal', data:salt.map(([,v])=>v), tension:.35, fill:true, borderWidth:2, pointRadius:3 }]
+        labels: saltLabels.map(d=>formatDate(d)),
+        datasets:[
+          { label:'Uso en procesos', data:saltLabels.map(d=>valFor(saltProcess,d)), tension:.35, fill:true, borderWidth:2, pointRadius:3 },
+          { label:'Salida a frigoríficos', data:saltLabels.map(d=>valFor(saltFridge,d)), tension:.35, fill:false, borderWidth:2, pointRadius:3 }
+        ]
       }, { scales:{ y:{ beginAtZero:true } } });
     }
 
@@ -1590,7 +1670,7 @@
       if (!employee || employee.toLowerCase().includes('total')) return false;
       const ensured = ensureDestajoEmployee(employee, sector, date);
       state.production.push({ id:uid(), date, employee: ensured.employeeName, sector, qty, salt, origin });
-      if (salt > 0) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, user:ensured.employeeName });
+      if (salt > 0) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, scope:'Proceso', user:ensured.employeeName });
       if (autoAttendance) ensureDestajoAttendance(ensured.employeeName, date, sector);
       return true;
     }
@@ -1765,6 +1845,79 @@
       return added;
     }
 
+    function getDatesFromRows(rows, fallback = document.getElementById('prodDate')?.value || toISODate(new Date())) {
+      const dates = new Set();
+      (rows || []).forEach(r => {
+        if (rowLooksEmpty(r)) return;
+        const rawDate = getByHeader(r, ['fecha','dia','día','date']);
+        const parsed = parseDateAny(rawDate, fallback);
+        if (parsed) dates.add(parsed);
+      });
+      return [...dates].filter(Boolean).sort();
+    }
+
+    function isOperativeEmployee(emp) {
+      if (!emp) return false;
+      const st = normalizeText(emp.status || '');
+      const role = normalizeText(emp.role || '');
+      const shift = normalizeText(emp.shift || '');
+      const area = normalizeText(emp.area || '');
+      if (st.includes('baja') || st.includes('admin') || st.includes('destajo')) return false;
+      if (role.includes('admin') || role.includes('destajo')) return false;
+      if (shift.includes('destajo')) return false;
+      if (area.includes('admin')) return false;
+      return true;
+    }
+
+    function markMissingOperativeAbsences(dates, source = 'Ausente automático: no aparece en el Excel de presentes') {
+      let added = 0;
+      const cleanDates = [...new Set(dates || [])].filter(Boolean);
+      cleanDates.forEach(date => {
+        if (isSundayISO(date)) return;
+        state.employees.filter(isOperativeEmployee).forEach(emp => {
+          const employee = fullName(emp);
+          const exists = state.attendance.some(a => a.date === date && normalizeText(a.employee) === normalizeText(employee));
+          if (!exists) {
+            state.attendance.push({
+              id: uid(),
+              date,
+              employee,
+              shift: emp.shift || 'Día',
+              in: '',
+              out: '',
+              status: 'Ausente',
+              obs: source
+            });
+            added++;
+          }
+        });
+      });
+      return added;
+    }
+
+    function datesBetweenISO(from, to) {
+      const out = [];
+      if (!from || !to) return out;
+      let cursor = from;
+      while (cursor <= to) {
+        if (!isSundayISO(cursor)) out.push(cursor);
+        cursor = addDaysISO(cursor, 1);
+      }
+      return out;
+    }
+
+    function completeAbsencesForVisiblePeriod() {
+      const from = document.getElementById('attPeriodFrom')?.value || toISODate(new Date());
+      const to = document.getElementById('attPeriodTo')?.value || from;
+      const days = datesBetweenISO(from, to);
+      if (!days.length) return toast('No hay días laborables en el período seleccionado.');
+      const ok = confirm(`Voy a completar ausentes para empleados fijos entre ${formatDateFull(from)} y ${formatDateFull(to)}. No se toca Destajo, Baja ni Administrativos. ¿Continuar?`);
+      if (!ok) return;
+      const added = markMissingOperativeAbsences(days, 'Ausente automático: empleado fijo sin fichaje en el período seleccionado');
+      saveState(); refreshUI();
+      toast(`Ausentes completados: ${added}.`);
+    }
+
     function importProductionRows(rows, sheetName='Excel') {
       let added = 0;
       rows.forEach(r => {
@@ -1850,17 +2003,22 @@
         if (!window.XLSX) return toast('No cargó la librería XLSX. Verificá internet.');
         const data = await file.arrayBuffer();
         const workbook = XLSX.read(data, { type:'array', cellDates:true });
-        let prod = 0, att = 0, empAdd = 0, empUpd = 0;
+        let prod = 0, att = 0, empAdd = 0, empUpd = 0, abs = 0;
         workbook.SheetNames.forEach(name => {
           const sheet = workbook.Sheets[name];
           const rows = sheetToSmartRows(sheet);
           if (!rows.length) return;
           const kind = detectSheetKind(rows, name);
+          const dates = getDatesFromRows(rows);
           if (kind === 'combined') {
+            // Primero cargamos producción para detectar personas de Destajo.
             prod += importProductionRows(rows, name);
             att += importAttendanceRows(rows, { skipBlankNoMarks:true, source:'Importado desde Excel producción/presentes' });
+            // Luego completamos ausentes SOLO para empleados fijos que no aparecieron con fichaje.
+            abs += markMissingOperativeAbsences(dates, 'Ausente automático: no aparece en el Excel de presentes');
           } else if (kind === 'attendance') {
             att += importAttendanceRows(rows, { source:'Importado desde Excel de presentes' });
+            abs += markMissingOperativeAbsences(dates, 'Ausente automático: no aparece en el Excel de presentes');
           } else if (kind === 'employees') {
             const r = importEmployeeRows(rows); empAdd += r.added; empUpd += r.updated;
           } else {
@@ -1868,7 +2026,7 @@
           }
         });
         saveState(); refreshSelects(); refreshUI();
-        toast(`Archivo procesado: ${prod} producción, ${att} presentes, ${empAdd} empleados nuevos, ${empUpd} actualizados.`);
+        toast(`Archivo procesado: ${prod} producción, ${att} presentes, ${abs} ausentes automáticos, ${empAdd} empleados nuevos, ${empUpd} actualizados.`);
       } catch (err) { console.error(err); toast('No pude importar el archivo. Revisá columnas/formato.'); }
       event.target.value = '';
     }
@@ -2017,7 +2175,7 @@
       let rows = [];
       state.production.forEach(p => rows.push({date:p.date, employee:p.employee, sector:p.sector, type:'Producción', desc:`Producción ${number(p.qty)} / Sal ${number(p.salt)}`, user:p.origin || 'Manual'}));
       state.attendance.forEach(a => rows.push({date:a.date, employee:a.employee, sector:a.shift, type:'Presentismo', desc:`${a.status} · Entrada ${a.in||'-'} / Salida ${a.out||'-'} ${a.obs ? '· ' + a.obs : ''}`, user:'Sistema'}));
-      state.salt.forEach(s => rows.push({date:s.date, employee:s.user || 'Sistema', sector:s.origin, type:'Sal', desc:`${s.type} de ${number(s.qty)}`, user:s.user || 'Sistema'}));
+      state.salt.forEach(s => rows.push({date:s.date, employee:s.user || 'Sistema', sector:saltLabel(s), type:'Sal', desc:`${s.type} · ${classifySaltMovement(s)} · ${number(s.qty)}`, user:s.user || 'Sistema'}));
       state.employees.forEach(e => rows.push({date:e.created || toISODate(new Date()), employee:fullName(e), sector:e.area, type:'Empleado', desc:`${e.role} · ${e.status}`, user:'Sistema'}));
       if (from) rows = rows.filter(r=>r.date >= from);
       if (to) rows = rows.filter(r=>r.date <= to);
@@ -2031,26 +2189,41 @@
     }
 
     function renderSalt() {
+      const salidaRows = state.salt.filter(s=>s.type==='Salida');
+      const processRows = salidaRows.filter(isProcessSalt);
+      const fridgeRows = salidaRows.filter(isFridgeSalt);
       const stock = state.salt.reduce((a,s)=> a + (s.type==='Entrada' ? Number(s.qty||0) : -Number(s.qty||0)), 0);
       const today = toISODate(new Date());
-      const usedToday = state.salt.filter(s=>s.type==='Salida' && s.date===today).reduce((a,s)=>a+Number(s.qty||0),0);
+      const usedProcessToday = processRows.filter(s=>s.date===today).reduce((a,s)=>a+Number(s.qty||0),0);
+      const sentFridgeToday = fridgeRows.filter(s=>s.date===today).reduce((a,s)=>a+Number(s.qty||0),0);
+      const deltacarTotal = fridgeRows.filter(s=>normalizeText(saltLabel(s)).includes('deltacar')).reduce((a,s)=>a+Number(s.qty||0),0);
       const last7 = Array.from({length:7},(_,i)=>addDaysISO(today, -i));
-      const used7 = state.salt.filter(s=>s.type==='Salida' && last7.includes(s.date)).reduce((a,s)=>a+Number(s.qty||0),0);
-      const avg = used7 / 7;
-      const daysLeft = avg > 0 ? Math.max(0, Math.floor(stock / avg)) : 0;
+      const used7Process = processRows.filter(s=>last7.includes(s.date)).reduce((a,s)=>a+Number(s.qty||0),0);
+      const avgProcess = used7Process / 7;
+      const daysLeft = avgProcess > 0 ? Math.max(0, Math.floor(stock / avgProcess)) : 0;
       document.getElementById('saltKpis').innerHTML = [
-        kpi('Sal disponible', number(stock), 'stock actual', 'salt', stock < 0 ? 'red' : 'blue'),
-        kpi('Sal usada hoy', number(usedToday), 'actualizado hoy', 'salt', 'blue'),
-        kpi('Promedio diario', moneyless(avg), 'últimos 7 días', 'prod', 'blue'),
-        kpi('Días estimados restantes', number(daysLeft), 'con consumo actual', 'alert', daysLeft <= 3 ? 'red' : 'blue')
+        kpi('Sal disponible', number(stock), 'stock actual total', 'salt', stock < 0 ? 'red' : 'blue'),
+        kpi('Uso en procesos hoy', number(usedProcessToday), 'Santa Faz / producción', 'salt', 'blue'),
+        kpi('Salida a frigoríficos hoy', number(sentFridgeToday), 'no se mezcla con procesos', 'salt', 'purple'),
+        kpi('Deltacar acumulado', number(deltacarTotal), 'sal enviada a ese frigo', 'prod', 'purple')
       ].join('');
-      document.getElementById('saltTable').innerHTML = `<thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Origen / destino</th><th>Usuario</th><th>Acciones</th></tr></thead><tbody>${state.salt.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>`<tr><td>${formatDateFull(s.date)}</td><td>${statusBadge(s.type)}</td><td><strong class="${s.type==='Entrada'?'green':'red'}">${s.type==='Entrada'?'+':'-'}${number(s.qty)}</strong></td><td>${escapeHtml(s.origin)}</td><td>${escapeHtml(s.user || '-')}</td><td class="actions-cell"><button class="icon-btn" onclick="deleteItem('salt','${s.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="6">Sin movimientos.</td></tr>`}</tbody>`;
+
+      const processSummary = groupSaltByLabel(processRows);
+      document.getElementById('saltProcessTable').innerHTML = `<thead><tr><th>Proceso</th><th>Sal usada</th></tr></thead><tbody>${processSummary.map(([name,qty])=>`<tr><td>${escapeHtml(name)}</td><td><strong>${number(qty)}</strong></td></tr>`).join('') || `<tr><td colspan="2">Sin consumo interno registrado.</td></tr>`}</tbody>`;
+
+      const fridgeSummary = groupSaltByLabel(fridgeRows);
+      document.getElementById('saltFridgeTable').innerHTML = `<thead><tr><th>Frigorífico</th><th>Sal enviada</th></tr></thead><tbody>${fridgeSummary.map(([name,qty])=>`<tr><td>${escapeHtml(name)}</td><td><strong>${number(qty)}</strong></td></tr>`).join('') || `<tr><td colspan="2">Sin sal enviada a frigoríficos.</td></tr>`}</tbody>`;
+
+      document.getElementById('saltTable').innerHTML = `<thead><tr><th>Fecha</th><th>Tipo</th><th>Clasificación</th><th>Cantidad</th><th>Destino / proceso</th><th>Usuario</th><th>Acciones</th></tr></thead><tbody>${state.salt.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{ const scope=classifySaltMovement(s); const label=saltLabel(s); return `<tr><td>${formatDateFull(s.date)}</td><td>${statusBadge(s.type)}</td><td>${statusBadge(scope)}</td><td><strong class="${s.type==='Entrada'?'green':'red'}">${s.type==='Entrada'?'+':'-'}${number(s.qty)}</strong></td><td>${escapeHtml(label)}</td><td>${escapeHtml(s.user || '-')}</td><td class="actions-cell"><button class="icon-btn" onclick="deleteItem('salt','${s.id}')">🗑</button></td></tr>` }).join('') || `<tr><td colspan="7">Sin movimientos.</td></tr>`}</tbody>`;
     }
 
     function addSaltMove() {
-      const item = { id:uid(), date:document.getElementById('saltDate').value || toISODate(new Date()), type:document.getElementById('saltType').value, qty:Number(document.getElementById('saltQty').value || 0), origin:document.getElementById('saltOrigin').value, user:document.getElementById('saltUser').value || 'Sistema' };
+      const origin = document.getElementById('saltOrigin').value;
+      const type = document.getElementById('saltType').value;
+      const scope = type === 'Entrada' ? 'Ingreso' : (isFrigorificoDestination(origin) ? 'Frigorífico' : 'Proceso');
+      const item = { id:uid(), date:document.getElementById('saltDate').value || toISODate(new Date()), type, qty:Number(document.getElementById('saltQty').value || 0), origin, scope, user:document.getElementById('saltUser').value || 'Sistema' };
       if (!item.qty || !item.origin) return toast('Completá cantidad y origen/destino.');
-      state.salt.push(item); saveState(); document.getElementById('saltQty').value=''; refreshUI(); toast('Movimiento de sal guardado.');
+      state.salt.push(item); saveState(); document.getElementById('saltQty').value=''; refreshUI(); toast(scope === 'Frigorífico' ? 'Sal registrada como salida a frigorífico.' : scope === 'Proceso' ? 'Sal registrada como uso en proceso.' : 'Ingreso de sal guardado.');
     }
 
     function renderEmployees() {
@@ -2126,7 +2299,10 @@
     }
 
     function exportTable(type) {
-      const map = { production: state.production, attendance: state.attendance, salt: state.salt, employees: state.employees };
+      const map = { production: state.production, attendance: state.attendance, employees: state.employees };
+      if (type === 'salt') {
+        return exportCSV(`salt_${toISODate(new Date())}.csv`, state.salt.map(s => ({ ...s, clasificacion: classifySaltMovement(s), destino_proceso: saltLabel(s) })));
+      }
       exportCSV(`${type}_${toISODate(new Date())}.csv`, map[type] || []);
     }
 
