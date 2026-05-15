@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel Integral de Planta</title>
-  <!-- Versión actualizada: sal separada por procesos y frigoríficos -->
 
   <!-- Librerías externas opcionales. En GitHub Pages cargan correctamente con internet. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -64,6 +63,1871 @@
       min-height: 100vh;
     }
 
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: rgba(255,255,255,0.96);
+      border-right: 1px solid var(--border);
+      padding: 22px 18px;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 8px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), #60a5fa);
+      display: grid;
+      place-items: center;
+      color: white;
+      box-shadow: 0 12px 26px rgba(37, 99, 235, .25);
+      font-weight: 800;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.2;
+      color: var(--navy);
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .nav-btn {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      color: var(--muted);
+      font-weight: 650;
+      text-align: left;
+      transition: .18s ease;
+    }
+
+    .nav-btn:hover {
+      background: #f1f5f9;
+      color: var(--navy);
+    }
+
+    .nav-btn.active {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .nav-ico {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .sync-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .sync-box strong {
+      display: block;
+      color: var(--navy);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .main {
+      min-width: 0;
+    }
+
+    .topbar {
+      height: var(--topbar);
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      background: rgba(248,250,252,.86);
+      border-bottom: 1px solid rgba(229,231,235,.7);
+      backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      gap: 16px;
+    }
+
+    .mobile-menu {
+      display: none;
+      border: 1px solid var(--border);
+      background: white;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      color: var(--navy);
+    }
+
+    .page-title {
+      min-width: 0;
+    }
+
+    .page-title h2 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .page-title p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill-date {
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .content {
+      padding: 28px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .view { display: none; animation: fadeIn .18s ease; }
+    .view.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .grid { display: grid; gap: 18px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-auto { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      min-width: 0;
+    }
+
+    .card.compact { padding: 16px; border-radius: var(--radius-md); }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h3 {
+      margin: 0;
+      font-size: 17px;
+      color: var(--navy);
+      letter-spacing: -0.02em;
+    }
+
+    .section-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .kpi-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, .04);
+      min-height: 132px;
+    }
+
+    .kpi-card small {
+      color: var(--muted);
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      line-height: 1.05;
+      font-weight: 850;
+      letter-spacing: -0.04em;
+      color: var(--navy);
+    }
+
+    .kpi-unit {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .kpi-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      flex: 0 0 auto;
+    }
+
+    .green { color: var(--green) !important; }
+    .red { color: var(--red) !important; }
+    .amber { color: var(--amber) !important; }
+    .blue { color: var(--primary) !important; }
+    .muted { color: var(--muted) !important; }
+
+    .btn {
+      border: 1px solid transparent;
+      min-height: 42px;
+      border-radius: 13px;
+      padding: 10px 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 750;
+      transition: .18s ease;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, .22);
+    }
+
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+    .btn-danger {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: transparent;
+    }
+
+    .btn-sm { min-height: 34px; padding: 7px 10px; border-radius: 10px; font-size: 13px; }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .field label {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid #dbe3ee;
+      border-radius: 13px;
+      background: white;
+      padding: 10px 12px;
+      color: var(--text);
+      outline: none;
+      transition: .18s ease;
+    }
+
+    .field textarea {
+      min-height: 130px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+    }
+
+    .form-row {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      align-items: end;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      font-size: 14px;
+    }
+
+    th {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: #f8fafc;
+      font-weight: 850;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover td { background: #fbfdff; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .badge.green { background: var(--green-soft); color: #15803d !important; }
+    .badge.red { background: var(--red-soft); color: #b91c1c !important; }
+    .badge.amber { background: var(--amber-soft); color: #b45309 !important; }
+    .badge.blue { background: var(--blue-soft); color: #1d4ed8 !important; }
+    .badge.gray { background: #f1f5f9; color: #475569 !important; }
+    .badge.purple { background: var(--purple-soft); color: #6d28d9 !important; }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      background: #cbd5e1;
+    }
+    .dot-green { background: var(--green); }
+    .dot-amber { background: var(--amber); }
+    .dot-red { background: var(--red); }
+    .dot-gray { background: #cbd5e1; }
+
+    .chart-box {
+      position: relative;
+      min-height: 340px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(37, 99, 235, 0.10), transparent 30%),
+        radial-gradient(circle at 88% 0%, rgba(14, 165, 233, 0.08), transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    .chart-box::before {
+      content: "";
+      position: absolute;
+      inset: 72px 18px 18px;
+      border-radius: 22px;
+      background: rgba(248, 250, 252, 0.62);
+      border: 1px solid rgba(226, 232, 240, 0.72);
+      pointer-events: none;
+    }
+
+    .chart-box .section-head,
+    .chart-box canvas {
+      position: relative;
+      z-index: 1;
+    }
+
+    .chart-box canvas {
+      width: 100% !important;
+      height: 292px !important;
+      padding: 8px 6px 0;
+    }
+
+    .chart-box h3::after {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-left: 9px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 0 6px rgba(37, 99, 235, .10);
+      vertical-align: middle;
+    }
+
+    .empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 18px;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      background: #f8fafc;
+    }
+
+    .tabs-tools {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .import-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: white;
+    }
+
+    .import-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: var(--primary-soft);
+      color: var(--primary);
+      flex: 0 0 auto;
+    }
+
+    .import-card h4 { margin: 0; color: var(--navy); }
+    .import-card p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .info-tile {
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .info-tile .circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .info-tile h4 { margin: 0; color: var(--navy); }
+    .info-tile p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .employee-card {
+      display: grid;
+      gap: 16px;
+    }
+
+    .person-head {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 850;
+      letter-spacing: -.02em;
+      flex: 0 0 auto;
+    }
+
+    .person-head h4 { margin: 0; color: var(--navy); }
+    .person-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 8px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .detail-row strong { color: var(--text); font-weight: 750; text-align: right; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.42);
+      backdrop-filter: blur(6px);
+      display: none;
+      place-items: center;
+      z-index: 100;
+      padding: 18px;
+    }
+    .modal-backdrop.active { display: grid; }
+
+    .modal {
+      width: min(680px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      background: white;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 28px 80px rgba(15,23,42,.25);
+      padding: 22px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .modal-head h3 { margin: 0; color: var(--navy); }
+    .modal-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+    .toast-wrap {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 120;
+      display: grid;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--navy);
+      color: white;
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: 0 18px 50px rgba(15,23,42,.28);
+      min-width: 240px;
+      animation: toastIn .2s ease;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.7fr .9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: white;
+      display: inline-grid;
+      place-items: center;
+      color: var(--muted);
+    }
+
+    .icon-btn:hover { color: var(--primary); border-color: #bfdbfe; background: #eff6ff; }
+
+    .note {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: #1e40af;
+      padding: 13px 15px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .settings-block {
+      display: grid;
+      gap: 16px;
+    }
+
+    .footer-safe {
+      padding-bottom: 10px;
+    }
+
+    @media (max-width: 1180px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 880px) {
+      :root { --sidebar: 0px; --topbar: 68px; }
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-105%);
+        transition: .22s ease;
+        width: 310px;
+        max-width: calc(100vw - 34px);
+        box-shadow: 24px 0 80px rgba(15,23,42,.18);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-menu { display: inline-grid; place-items: center; }
+      .topbar { padding: 0 14px; }
+      .page-title h2 { font-size: 18px; }
+      .page-title p { display: none; }
+      .content { padding: 18px 14px 90px; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .kpi-card { min-height: auto; }
+      .top-actions .pill-date { display: none; }
+      table { min-width: 720px; }
+    }
+
+    @media (max-width: 560px) {
+      .brand h1 { font-size: 15px; }
+      .kpi-value { font-size: 28px; }
+      .section-head { flex-direction: column; }
+      .btn { width: 100%; }
+      .tabs-tools .btn { width: auto; flex: 1; }
+      .form-row { grid-template-columns: 1fr; }
+      .import-card { flex-direction: column; align-items: flex-start; }
+      .toast-wrap { left: 14px; right: 14px; bottom: 14px; }
+      .toast { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-icon">PI</div>
+        <div>
+          <h1>Panel Integral<br>de Planta</h1>
+          <p>Producción · Personal · Sal</p>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav-btn active" data-view="dashboard"><span class="nav-ico">⌂</span>Dashboard</button>
+        <button class="nav-btn" data-view="carga"><span class="nav-ico">＋</span>Carga diaria</button>
+        <button class="nav-btn" data-view="presentismo"><span class="nav-ico">◷</span>Presentismo</button>
+        <button class="nav-btn" data-view="seguimiento"><span class="nav-ico">◎</span>Seguimiento</button>
+        <button class="nav-btn" data-view="historial"><span class="nav-ico">☷</span>Historial</button>
+        <button class="nav-btn" data-view="sal"><span class="nav-ico">▱</span>Sal</button>
+        <button class="nav-btn" data-view="empleados"><span class="nav-ico">♙</span>Empleados</button>
+        <button class="nav-btn" data-view="reportes"><span class="nav-ico">▥</span>Reportes</button>
+        <button class="nav-btn" data-view="config"><span class="nav-ico">⚙</span>Configuración</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sync-box">
+          <strong>Base local activa</strong>
+          Los datos se guardan en este navegador. Usá Exportar / Backup para respaldo.
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="exportAllData()">⬇ Exportar backup</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+        <div class="page-title">
+          <h2 id="currentTitle">Dashboard</h2>
+          <p id="currentSubtitle">Vista principal con indicadores clave</p>
+        </div>
+        <div class="top-actions">
+          <div class="pill-date">📅 <span id="todayText"></span></div>
+          <button class="btn btn-secondary btn-sm" onclick="refreshUI()">⟳ Actualizar</button>
+          <button class="btn btn-primary btn-sm" onclick="openQuickAdd()">＋ Cargar</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- DASHBOARD -->
+        <section class="view active" id="view-dashboard">
+          <div class="grid grid-4" id="dashboardKpis"></div>
+
+          <div class="grid grid-2" style="margin-top:18px;">
+            <div class="card chart-box">
+              <div class="section-head">
+                <div>
+                  <h3>Producción por período</h3>
+                  <p>Barras modernas con línea de tendencia</p>
+                </div>
+              </div>
+              <canvas id="productionChart"></canvas>
+            </div>
+            <div class="card chart-box">
+              <div class="section-head">
+                <div>
+                  <h3>Presentismo</h3>
+                  <p>Dona con porcentaje central</p>
+                </div>
+              </div>
+              <canvas id="attendanceChart"></canvas>
+            </div>
+          </div>
+
+          <div class="grid grid-2" style="margin-top:18px;">
+            <div class="card">
+              <div class="section-head">
+                <div>
+                  <h3>Ranking de producción</h3>
+                  <p>Empleados con mayor producción acumulada</p>
+                </div>
+              </div>
+              <div class="table-wrap"><table id="rankingTable"></table></div>
+            </div>
+            <div class="card">
+              <div class="section-head">
+                <div>
+                  <h3>Lectura rápida</h3>
+                  <p>Resumen operativo del estado actual</p>
+                </div>
+              </div>
+              <div class="quick-links">
+                <div class="info-tile"><div class="circle">↗</div><div><h4>Producción</h4><p>Visualizá qué sector y empleado cargó más producción.</p></div></div>
+                <div class="info-tile"><div class="circle">✓</div><div><h4>Presentismo</h4><p>Detectá ausentes, retrasos y salidas anticipadas.</p></div></div>
+                <div class="info-tile"><div class="circle">▱</div><div><h4>Sal</h4><p>Controlá consumo, stock disponible y movimientos.</p></div></div>
+                <div class="info-tile"><div class="circle">⬇</div><div><h4>Exportación</h4><p>Descargá toda la información como respaldo.</p></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CARGA DIARIA -->
+        <section class="view" id="view-carga">
+          <div class="card">
+            <div class="section-head">
+              <div>
+                <h3>Carga manual</h3>
+                <p>Registrá producción y sal usada por fecha, sector y empleado.</p>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label>Fecha</label><input type="date" id="prodDate"></div>
+              <div class="field"><label>Empleado</label><select id="prodEmployee"></select></div>
+              <div class="field"><label>Sector</label><select id="prodSector"></select></div>
+              <div class="field"><label>Producción / unidades</label><input type="number" id="prodQty" placeholder="Ej: 320"></div>
+              <div class="field"><label>Sal usada</label><input type="number" id="prodSalt" placeholder="Ej: 6"></div>
+              <button class="btn btn-primary" onclick="addProduction()">＋ Agregar a la tabla</button>
+            </div>
+          </div>
+
+          <div class="grid grid-2" style="margin-top:18px;">
+            <div class="card">
+              <div class="section-head"><div><h3>Importar desde Excel</h3><p>Tomá datos de una planilla .xlsx, .xls o .csv.</p></div></div>
+              <div class="import-card">
+                <div class="import-icon">📊</div>
+                <div style="flex:1;">
+                  <h4>Archivo de producción</h4>
+                  <p>Columnas sugeridas: Fecha, Empleado, Sector, Cantidad, Sal.</p>
+                </div>
+                <label class="btn btn-secondary">
+                  Seleccionar archivo
+                  <input hidden type="file" accept=".xlsx,.xls,.csv" onchange="importProductionFile(event)">
+                </label>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-head"><div><h3>Importar desde WhatsApp</h3><p>Pegá el mensaje de producción y procesalo.</p></div></div>
+              <div class="field"><label>Mensaje</label><textarea id="whatsappText" placeholder="Ejemplo:\nFecha: 12/05/26\nResalado\nMariel: 227\nCristina: 345\nSal: 35"></textarea></div>
+              <div class="tabs-tools" style="margin-top:12px; margin-bottom:0;"><button class="btn btn-primary" onclick="parseWhatsapp()">Procesar mensaje</button><button class="btn btn-secondary" onclick="loadWhatsappExample()">Ver ejemplo</button></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:18px;">
+            <div class="section-head">
+              <div><h3>Vista previa / registros cargados</h3><p>Podés editar o borrar antes de seguir trabajando.</p></div>
+              <button class="btn btn-secondary btn-sm" onclick="exportTable('production')">⬇ Exportar producción</button>
+            </div>
+            <div class="table-wrap"><table id="productionTable"></table></div>
+          </div>
+        </section>
+
+        <!-- PRESENTISMO -->
+        <section class="view" id="view-presentismo">
+          <div class="card">
+            <div class="section-head"><div><h3>Control diario de asistencia</h3><p>Registrá entrada, salida, estado y observación.</p></div></div>
+            <div class="form-row">
+              <div class="field"><label>Fecha</label><input type="date" id="attDate"></div>
+              <div class="field"><label>Empleado</label><select id="attEmployee"></select></div>
+              <div class="field"><label>Turno</label><select id="attShift"></select></div>
+              <div class="field"><label>Entrada</label><input type="time" id="attIn"></div>
+              <div class="field"><label>Salida</label><input type="time" id="attOut"></div>
+              <div class="field"><label>Estado</label><select id="attStatus"><option>Presente</option><option>Ausente</option><option>Retraso</option><option>Salida anticipada</option><option>Horas extra</option></select></div>
+              <div class="field"><label>Observación</label><input id="attObs" placeholder="Opcional"></div>
+              <button class="btn btn-primary" onclick="addAttendance()">Guardar asistencia</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:18px;">
+            <div class="section-head">
+              <div><h3>Listado de presentismo</h3><p>Filtros rápidos por fecha, turno y estado.</p></div>
+              <button class="btn btn-secondary btn-sm" onclick="exportTable('attendance')">⬇ Exportar presentismo</button>
+            </div>
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="field"><label>Filtrar fecha</label><input type="date" id="attFilterDate" onchange="renderAttendance()"></div>
+              <div class="field"><label>Turno</label><select id="attFilterShift" onchange="renderAttendance()"><option value="">Todos</option></select></div>
+              <div class="field"><label>Estado</label><select id="attFilterStatus" onchange="renderAttendance()"><option value="">Todos</option><option>Presente</option><option>Ausente</option><option>Retraso</option><option>Salida anticipada</option><option>Horas extra</option></select></div>
+            </div>
+            <div class="grid grid-4" id="attendanceSummary" style="margin-bottom:14px;"></div>
+            <div class="table-wrap"><table id="attendanceTable"></table></div>
+          </div>
+        </section>
+
+        <!-- SEGUIMIENTO -->
+        <section class="view" id="view-seguimiento">
+          <div class="split">
+            <div class="card">
+              <div class="section-head">
+                <div><h3>Desempeño semanal del personal</h3><p>Puntos de estado por empleado y resumen semanal.</p></div>
+                <div class="field" style="min-width:180px;"><label>Semana desde</label><input type="date" id="weekStart" onchange="renderTracking()"></div>
+              </div>
+              <div class="table-wrap"><table id="trackingTable"></table></div>
+              <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:13px;">
+                <span><i class="status-dot dot-green"></i> Óptimo</span>
+                <span><i class="status-dot dot-amber"></i> Regular</span>
+                <span><i class="status-dot dot-red"></i> Revisar</span>
+                <span><i class="status-dot dot-gray"></i> Sin datos / no laborable</span>
+              </div>
+            </div>
+            <div class="card employee-card" id="trackingDetail"></div>
+          </div>
+        </section>
+
+        <!-- HISTORIAL -->
+        <section class="view" id="view-historial">
+          <div class="card">
+            <div class="section-head"><div><h3>Consulta y búsqueda histórica</h3><p>Buscá registros por rango de fecha, empleado, sector y tipo.</p></div></div>
+            <div class="form-row">
+              <div class="field"><label>Desde</label><input type="date" id="histFrom" onchange="renderHistory()"></div>
+              <div class="field"><label>Hasta</label><input type="date" id="histTo" onchange="renderHistory()"></div>
+              <div class="field"><label>Empleado</label><select id="histEmployee" onchange="renderHistory()"><option value="">Todos</option></select></div>
+              <div class="field"><label>Sector</label><select id="histSector" onchange="renderHistory()"><option value="">Todos</option></select></div>
+              <div class="field"><label>Tipo</label><select id="histType" onchange="renderHistory()"><option value="">Todos</option><option>Producción</option><option>Presentismo</option><option>Sal</option><option>Empleado</option></select></div>
+              <button class="btn btn-primary" onclick="renderHistory()">🔎 Buscar</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:18px;">
+            <div class="section-head"><div><h3>Registros encontrados</h3><p id="historyCount">Mostrando registros</p></div><button class="btn btn-secondary btn-sm" onclick="exportHistory()">⬇ Exportar historial</button></div>
+            <div class="table-wrap"><table id="historyTable"></table></div>
+          </div>
+        </section>
+
+        <!-- SAL -->
+        <section class="view" id="view-sal">
+          <div class="grid grid-4" id="saltKpis"></div>
+          <div class="grid grid-2" style="margin-top:18px;">
+            <div class="card chart-box"><div class="section-head"><div><h3>Consumo diario de sal</h3><p>Área suave con tendencia de consumo</p></div></div><canvas id="saltChart"></canvas></div>
+            <div class="card">
+              <div class="section-head"><div><h3>Nuevo movimiento</h3><p>Entrada o salida de sal con origen/destino.</p></div></div>
+              <div class="form-row">
+                <div class="field"><label>Fecha</label><input type="date" id="saltDate"></div>
+                <div class="field"><label>Tipo</label><select id="saltType"><option>Entrada</option><option>Salida</option></select></div>
+                <div class="field"><label>Cantidad</label><input type="number" id="saltQty" placeholder="Ej: 35"></div>
+                <div class="field"><label>Origen / destino</label><select id="saltOrigin"></select></div>
+                <div class="field"><label>Usuario</label><input id="saltUser" placeholder="Ej: Sistema"></div>
+                <button class="btn btn-primary" onclick="addSaltMove()">Guardar movimiento</button>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:18px;">
+            <div class="section-head"><div><h3>Movimientos recientes</h3><p>Registro de entradas y salidas.</p></div><button class="btn btn-secondary btn-sm" onclick="exportTable('salt')">⬇ Exportar sal</button></div>
+            <div class="table-wrap"><table id="saltTable"></table></div>
+          </div>
+        </section>
+
+        <!-- EMPLEADOS -->
+        <section class="view" id="view-empleados">
+          <div class="card">
+            <div class="section-head">
+              <div><h3>Gestión clara del personal</h3><p>Alta, edición, baja y restauración sin perder historial.</p></div>
+              <div class="tabs-tools" style="margin:0;"><button class="btn btn-primary" onclick="openEmployeeModal()">＋ Agregar</button><button class="btn btn-secondary" onclick="exportTable('employees')">⬇ Exportar</button></div>
+            </div>
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="field"><label>Buscar empleado</label><input id="empSearch" placeholder="Nombre, apellido, sector..." oninput="renderEmployees()"></div>
+              <div class="field"><label>Estado</label><select id="empStatusFilter" onchange="renderEmployees()"><option value="">Todos</option><option>Activo</option><option>Administrativo</option><option>Baja</option></select></div>
+              <div class="field"><label>Turno</label><select id="empShiftFilter" onchange="renderEmployees()"><option value="">Todos</option></select></div>
+            </div>
+            <div class="table-wrap"><table id="employeesTable"></table></div>
+          </div>
+        </section>
+
+        <!-- REPORTES -->
+        <section class="view" id="view-reportes">
+          <div class="card">
+            <div class="section-head"><div><h3>Reportes y exportación</h3><p>Descargá la base completa o registros específicos.</p></div></div>
+            <div class="grid grid-3">
+              <button class="btn btn-primary" onclick="exportAllData()">⬇ Backup completo JSON</button>
+              <button class="btn btn-secondary" onclick="exportHistory()">⬇ Historial filtrado CSV</button>
+              <button class="btn btn-secondary" onclick="print()">🖨 Imprimir pantalla</button>
+            </div>
+            <div class="note" style="margin-top:18px;">ℹ️ <span>El backup JSON sirve para guardar toda la base y luego restaurarla desde Configuración. Para Excel, podés exportar tablas específicas en CSV.</span></div>
+          </div>
+        </section>
+
+        <!-- CONFIG -->
+        <section class="view" id="view-config">
+          <div class="grid grid-2">
+            <div class="card settings-block">
+              <div class="section-head"><div><h3>Configuración operativa</h3><p>Personalizá sectores, turnos y frigoríficos.</p></div></div>
+              <div class="field"><label>Sectores</label><textarea id="cfgSectors"></textarea></div>
+              <div class="field"><label>Turnos</label><textarea id="cfgShifts"></textarea></div>
+              <div class="field"><label>Frigoríficos / destinos de sal</label><textarea id="cfgPlants"></textarea></div>
+              <button class="btn btn-primary" onclick="saveConfig()">Guardar configuración</button>
+            </div>
+            <div class="card settings-block">
+              <div class="section-head"><div><h3>Backup y restauración</h3><p>Guardá o recuperá toda la información.</p></div></div>
+              <button class="btn btn-primary" onclick="exportAllData()">⬇ Descargar backup completo</button>
+              <label class="btn btn-secondary">⬆ Restaurar backup JSON<input hidden type="file" accept=".json" onchange="restoreBackup(event)"></label>
+              <button class="btn btn-danger" onclick="resetDemoConfirm()">Eliminar datos y volver a ejemplo</button>
+              <div class="note">⚠️ <span>La restauración reemplaza la base actual de este navegador. Exportá un backup antes de hacer cambios grandes.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="footer-safe"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL EMPLEADO -->
+  <div class="modal-backdrop" id="employeeModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div><h3 id="employeeModalTitle">Agregar empleado</h3><p>Completá los datos del personal.</p></div>
+        <button class="icon-btn" onclick="closeEmployeeModal()">×</button>
+      </div>
+      <input type="hidden" id="empIdEdit">
+      <div class="form-row">
+        <div class="field"><label>Nombre</label><input id="empName"></div>
+        <div class="field"><label>Apellido</label><input id="empLast"></div>
+        <div class="field"><label>Área / sector habitual</label><select id="empArea"></select></div>
+        <div class="field"><label>Turno</label><select id="empShift"></select></div>
+        <div class="field"><label>Rango</label><select id="empRole"><option>Operario</option><option>Supervisor</option><option>Administrativo</option></select></div>
+        <div class="field"><label>Estado</label><select id="empStatus"><option>Activo</option><option>Administrativo</option><option>Baja</option></select></div>
+      </div>
+      <div class="tabs-tools" style="justify-content:flex-end;margin-top:18px;margin-bottom:0;">
+        <button class="btn btn-secondary" onclick="closeEmployeeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEmployee()">Guardar empleado</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script>
+    const STORE_KEY = 'panel_integral_planta_v1';
+    const defaultConfig = {
+      sectors: ['Resalado', 'Sacudido', 'Lavado a mano', 'Lavado a máquina', 'Salado a máquina', 'Clasificado', 'Seleccionado', 'Empaque', 'Apilado', 'Prensa'],
+      shifts: ['Día', 'Tarde', 'Intermedio', 'Cortado', 'Noche'],
+      plants: ['Deltacar', 'Alba', 'Cooperativa Paraná', 'Santa Inés', 'Suipacha', 'Recreo', 'Brillante']
+    };
+
+    let state = loadState();
+    let charts = {};
+
+    function defaultState() {
+      const today = toISODate(new Date());
+      return {
+        config: structuredCloneSafe(defaultConfig),
+        employees: [
+          {id: uid(), name:'Juan', last:'Pérez', area:'Resalado', shift:'Día', role:'Operario', status:'Activo', created: today},
+          {id: uid(), name:'María', last:'Gómez', area:'Sacudido', shift:'Día', role:'Operario', status:'Activo', created: today},
+          {id: uid(), name:'Carlos', last:'López', area:'Mantenimiento', shift:'Tarde', role:'Supervisor', status:'Activo', created: today},
+          {id: uid(), name:'Lucía', last:'Martínez', area:'Lavado a mano', shift:'Intermedio', role:'Operario', status:'Activo', created: today},
+          {id: uid(), name:'Pedro', last:'Ramírez', area:'Empaque', shift:'Día', role:'Operario', status:'Activo', created: today}
+        ],
+        production: [
+          {id: uid(), date: today, employee:'Juan Pérez', sector:'Resalado', qty:320, salt:6, origin:'Ejemplo'},
+          {id: uid(), date: today, employee:'María Gómez', sector:'Sacudido', qty:280, salt:0, origin:'Ejemplo'},
+          {id: uid(), date: today, employee:'Lucía Martínez', sector:'Lavado a mano', qty:250, salt:0, origin:'Ejemplo'}
+        ],
+        attendance: [
+          {id: uid(), date: today, employee:'Juan Pérez', shift:'Día', in:'07:02', out:'16:01', status:'Presente', obs:''},
+          {id: uid(), date: today, employee:'María Gómez', shift:'Día', in:'07:10', out:'15:58', status:'Retraso', obs:'Llegó 10 min tarde'},
+          {id: uid(), date: today, employee:'Carlos López', shift:'Tarde', in:'', out:'', status:'Ausente', obs:'Sin registro de entrada'},
+          {id: uid(), date: today, employee:'Lucía Martínez', shift:'Intermedio', in:'07:05', out:'13:10', status:'Salida anticipada', obs:'Salida por turno médico'}
+        ],
+        salt: [
+          {id: uid(), date: today, type:'Entrada', qty:120, origin:'Depósito central', user:'Sistema'},
+          {id: uid(), date: today, type:'Salida', qty:50, origin:'Producción Línea 2', user:'Sistema'},
+          {id: uid(), date: addDaysISO(today,-1), type:'Salida', qty:65, origin:'Producción Línea 1', user:'Sistema'}
+        ]
+      };
+    }
+
+    function structuredCloneSafe(obj){ return JSON.parse(JSON.stringify(obj)); }
+    function uid(){ return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORE_KEY);
+        if (!saved) return defaultState();
+        const parsed = JSON.parse(saved);
+        return { ...defaultState(), ...parsed, config: { ...defaultConfig, ...(parsed.config || {}) } };
+      } catch (e) { return defaultState(); }
+    }
+    function saveState() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+    function toISODate(date) {
+      const d = new Date(date);
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+    function formatDate(iso) {
+      if (!iso) return '-';
+      const [y,m,d] = iso.split('-');
+      return `${d}/${m}/${String(y).slice(-2)}`;
+    }
+    function formatDateFull(iso) {
+      if (!iso) return '-';
+      const [y,m,d] = iso.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    function addDaysISO(iso, days) {
+      const d = new Date(iso + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      return toISODate(d);
+    }
+    function parseDateAny(value) {
+      if (!value) return toISODate(new Date());
+      if (value instanceof Date) return toISODate(value);
+      const s = String(value).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (m) {
+        let y = m[3].length === 2 ? '20' + m[3] : m[3];
+        return `${y}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+      }
+      return toISODate(new Date());
+    }
+    function number(n) { return Number(n || 0).toLocaleString('es-AR'); }
+    function moneyless(n) { return Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 }); }
+    function escapeHtml(s) { return String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+    function fullName(e) { return `${e.name} ${e.last}`.trim(); }
+
+    function iconSvg(type) {
+      const icons = {
+        prod:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 17V9m4 8V4m4 13v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        users:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        alert:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        salt:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 8h10l2 13H5L7 8Zm3 0V5a2 2 0 0 1 4 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      };
+      return icons[type] || icons.prod;
+    }
+
+    function setDefaults() {
+      const today = toISODate(new Date());
+      ['prodDate','attDate','attFilterDate','saltDate'].forEach(id => { const el=document.getElementById(id); if(el && !el.value) el.value=today; });
+      const ws = document.getElementById('weekStart'); if (ws && !ws.value) ws.value = addDaysISO(today, -4);
+      const hf = document.getElementById('histFrom'); if (hf && !hf.value) hf.value = addDaysISO(today, -30);
+      const ht = document.getElementById('histTo'); if (ht && !ht.value) ht.value = today;
+      document.getElementById('todayText').textContent = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+
+    function fillSelect(el, options, selected='', first='') {
+      if (!el) return;
+      el.innerHTML = '';
+      if (first !== null && first !== undefined && first !== '') el.insertAdjacentHTML('beforeend', `<option value="">${first}</option>`);
+      options.forEach(o => el.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`));
+      if (selected) el.value = selected;
+    }
+
+    function refreshSelects() {
+      const activeEmployees = state.employees.filter(e => e.status !== 'Baja' && e.status !== 'Administrativo').map(fullName).sort();
+      const allEmployees = state.employees.map(fullName).sort();
+      fillSelect(document.getElementById('prodEmployee'), activeEmployees);
+      fillSelect(document.getElementById('attEmployee'), allEmployees);
+      fillSelect(document.getElementById('histEmployee'), allEmployees, '', 'Todos');
+      fillSelect(document.getElementById('prodSector'), state.config.sectors);
+      fillSelect(document.getElementById('histSector'), state.config.sectors, '', 'Todos');
+      fillSelect(document.getElementById('empArea'), state.config.sectors);
+      fillSelect(document.getElementById('empShift'), state.config.shifts);
+      fillSelect(document.getElementById('attShift'), state.config.shifts);
+      fillSelect(document.getElementById('attFilterShift'), state.config.shifts, '', 'Todos');
+      fillSelect(document.getElementById('empShiftFilter'), state.config.shifts, '', 'Todos');
+      fillSelect(document.getElementById('saltOrigin'), [...state.config.plants, ...state.config.sectors.map(s=>'Producción ' + s)]);
+    }
+
+    function navTo(view) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+      const titles = {
+        dashboard:['Dashboard','Vista principal con indicadores clave'], carga:['Carga diaria','Registro manual e importación de datos'], presentismo:['Presentismo','Control diario de asistencia'], seguimiento:['Seguimiento','Desempeño semanal del personal'], historial:['Historial','Consulta y búsqueda histórica'], sal:['Sal','Control de stock y consumo'], empleados:['Empleados','Gestión clara del personal'], reportes:['Reportes','Exportaciones y respaldos'], config:['Configuración','Parámetros del sistema']
+      };
+      document.getElementById('currentTitle').textContent = titles[view][0];
+      document.getElementById('currentSubtitle').textContent = titles[view][1];
+      document.getElementById('sidebar').classList.remove('open');
+      setTimeout(renderCharts, 60);
+    }
+
+    document.getElementById('nav').addEventListener('click', (e) => {
+      const btn = e.target.closest('.nav-btn');
+      if (btn) navTo(btn.dataset.view);
+    });
+
+    function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+
+    function toast(message) {
+      const wrap = document.getElementById('toastWrap');
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = message;
+      wrap.appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    function openQuickAdd(){ navTo('carga'); document.getElementById('prodQty').focus(); }
+
+    function kpi(title, value, unit, icon, cls='') {
+      return `<div class="kpi-card"><div><small>${title}</small><div class="kpi-value ${cls}">${value}</div><div class="kpi-unit">${unit}</div></div><div class="kpi-icon">${iconSvg(icon)}</div></div>`;
+    }
+
+    function statusBadge(status) {
+      const map = {
+        'Presente':'green', 'Activo':'green', 'Entrada':'green', 'Óptimo':'green',
+        'Ausente':'red', 'Baja':'red', 'Salida':'red', 'Revisar':'red',
+        'Retraso':'amber', 'Regular':'amber',
+        'Salida anticipada':'blue', 'Horas extra':'blue', 'Administrativo':'blue',
+        'Inactivo':'gray'
+      };
+      return `<span class="badge ${map[status] || 'gray'}">${escapeHtml(status)}</span>`;
+    }
+
+    function renderDashboard() {
+      const today = document.getElementById('prodDate')?.value || toISODate(new Date());
+      const prodToday = state.production.filter(p => p.date === today).reduce((a,p)=>a+Number(p.qty||0),0);
+      const attToday = state.attendance.filter(a => a.date === today);
+      const present = attToday.filter(a => a.status !== 'Ausente').length;
+      const absent = attToday.filter(a => a.status === 'Ausente').length;
+      const saltUsed = state.salt.filter(s => s.type === 'Salida').reduce((a,s)=>a+Number(s.qty||0),0);
+      document.getElementById('dashboardKpis').innerHTML = [
+        kpi('Producción del día', number(prodToday), 'unidades / kg', 'prod', 'blue'),
+        kpi('Presentes', number(present), 'personas', 'users', 'green'),
+        kpi('Ausentes', number(absent), 'personas', 'alert', 'red'),
+        kpi('Sal usada total', number(saltUsed), 'bolsas / kg', 'salt', 'blue')
+      ].join('');
+
+      const byEmp = {};
+      state.production.forEach(p => { byEmp[p.employee] = (byEmp[p.employee] || 0) + Number(p.qty || 0); });
+      const rows = Object.entries(byEmp).sort((a,b)=>b[1]-a[1]).slice(0,8);
+      document.getElementById('rankingTable').innerHTML = `<thead><tr><th>#</th><th>Empleado</th><th>Producción</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r[0])}</td><td><strong>${number(r[1])}</strong></td></tr>`).join('') || `<tr><td colspan="3">Sin producción cargada.</td></tr>`}</tbody>`;
+    }
+
+    function groupByDate(items, key='qty') {
+      const out = {};
+      items.forEach(item => out[item.date] = (out[item.date] || 0) + Number(item[key] || 0));
+      return Object.entries(out).sort((a,b)=>a[0].localeCompare(b[0]));
+    }
+
+    function chartFont(size = 12, weight = '600') {
+      return { family: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', size, weight };
+    }
+
+    function chartPalette() {
+      return {
+        blue: '#2563eb',
+        blue2: '#38bdf8',
+        navy: '#0f172a',
+        muted: '#64748b',
+        grid: 'rgba(148, 163, 184, 0.18)',
+        green: '#16a34a',
+        red: '#ef4444',
+        amber: '#f59e0b',
+        violet: '#7c3aed'
+      };
+    }
+
+    function makeGradient(ctx, area, from, to, vertical = true) {
+      const gradient = vertical
+        ? ctx.createLinearGradient(0, area.top, 0, area.bottom)
+        : ctx.createLinearGradient(area.left, 0, area.right, 0);
+      gradient.addColorStop(0, from);
+      gradient.addColorStop(1, to);
+      return gradient;
+    }
+
+    function chartBaseOptions(extra = {}) {
+      const c = chartPalette();
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        animation: { duration: 850, easing: 'easeOutQuart' },
+        layout: { padding: { top: 10, right: 14, bottom: 4, left: 8 } },
+        plugins: {
+          legend: {
+            display: true,
+            align: 'start',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'circle',
+              boxWidth: 8,
+              boxHeight: 8,
+              color: c.muted,
+              padding: 18,
+              font: chartFont(12, '700')
+            }
+          },
+          tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+            titleColor: '#fff',
+            bodyColor: '#e2e8f0',
+            borderColor: 'rgba(255,255,255,.12)',
+            borderWidth: 1,
+            cornerRadius: 14,
+            padding: 12,
+            displayColors: true,
+            usePointStyle: true,
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label || ctx.label}: ${number(ctx.parsed.y ?? ctx.parsed ?? 0)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false, drawBorder: false },
+            border: { display: false },
+            ticks: { color: c.muted, font: chartFont(11, '700'), maxRotation: 0 }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: c.grid, drawBorder: false },
+            border: { display: false },
+            ticks: {
+              color: c.muted,
+              font: chartFont(11, '700'),
+              padding: 8,
+              callback: value => number(value)
+            }
+          }
+        },
+        ...extra
+      };
+    }
+
+    const centerDoughnutTextPlugin = {
+      id: 'centerDoughnutText',
+      afterDraw(chart, args, options) {
+        if (!options || !options.text) return;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const x = (chartArea.left + chartArea.right) / 2;
+        const y = (chartArea.top + chartArea.bottom) / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '800 28px Inter, system-ui, sans-serif';
+        ctx.fillText(options.text, x, y - 8);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '700 12px Inter, system-ui, sans-serif';
+        ctx.fillText(options.subtext || '', x, y + 18);
+        ctx.restore();
+      }
+    };
+
+    function movingAverage(values) {
+      return values.map((_, i) => {
+        const slice = values.slice(Math.max(0, i - 2), i + 1);
+        return Math.round(slice.reduce((a,b)=>a+b,0) / Math.max(1, slice.length));
+      });
+    }
+
+    function makeChart(id, type, data, options = {}, plugins = []) {
+      const canvas = document.getElementById(id);
+      if (!canvas || !window.Chart) return;
+      if (charts[id]) charts[id].destroy();
+      charts[id] = new Chart(canvas, { type, data, options, plugins });
+    }
+
+    function renderCharts() {
+      if (!window.Chart) return;
+      const c = chartPalette();
+      const range = typeof getDashboardRange === 'function' ? getDashboardRange() : { from: '', to: '' };
+      const prodRows = state.production.filter(p => !range.from || inRange(p.date, range.from, range.to));
+      const prod = groupByDate(prodRows, 'qty').slice(-14);
+      const prodLabels = prod.map(([d]) => formatDate(d));
+      const prodData = prod.map(([,v]) => v);
+      const prodTrend = movingAverage(prodData);
+
+      makeChart('productionChart', 'bar', {
+        labels: prodLabels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Producción',
+            data: prodData,
+            borderRadius: 14,
+            borderSkipped: false,
+            maxBarThickness: 42,
+            backgroundColor: (ctx) => {
+              const area = ctx.chart.chartArea;
+              return area ? makeGradient(ctx.chart.ctx, area, 'rgba(37, 99, 235, 0.88)', 'rgba(56, 189, 248, 0.28)') : 'rgba(37, 99, 235, 0.75)';
+            },
+            hoverBackgroundColor: 'rgba(37, 99, 235, 0.95)'
+          },
+          {
+            type: 'line',
+            label: 'Tendencia',
+            data: prodTrend,
+            tension: .42,
+            borderColor: c.navy,
+            backgroundColor: c.navy,
+            borderWidth: 3,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBorderWidth: 3,
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: c.navy,
+            fill: false
+          }
+        ]
+      }, chartBaseOptions());
+
+      const attRows = state.attendance.filter(a => !range.from || inRange(a.date, range.from, range.to));
+      const present = attRows.filter(a => a.status !== 'Ausente').length;
+      const absent = attRows.filter(a => a.status === 'Ausente').length;
+      const total = present + absent;
+      const percent = total ? Math.round((present / total) * 100) : 0;
+      makeChart('attendanceChart', 'doughnut', {
+        labels: ['Presentes', 'Ausentes'],
+        datasets: [{
+          data: [present, absent],
+          backgroundColor: [c.green, c.red],
+          hoverBackgroundColor: ['#22c55e', '#f87171'],
+          borderColor: '#ffffff',
+          borderWidth: 6,
+          spacing: 4,
+          hoverOffset: 8
+        }]
+      }, {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '74%',
+        rotation: -90,
+        animation: { animateRotate: true, duration: 900, easing: 'easeOutQuart' },
+        plugins: {
+          centerDoughnutText: { text: `${percent}%`, subtext: 'presentismo' },
+          legend: {
+            position: 'bottom',
+            labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 18, color: c.muted, font: chartFont(12, '700') }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+            borderColor: 'rgba(255,255,255,.12)',
+            borderWidth: 1,
+            cornerRadius: 14,
+            padding: 12,
+            callbacks: { label: (ctx) => `${ctx.label}: ${number(ctx.parsed)} personas` }
+          }
+        }
+      }, [centerDoughnutTextPlugin]);
+
+      const saltRows = state.salt.filter(s => s.type === 'Salida' && (!range.from || inRange(s.date, range.from, range.to)));
+      const salt = groupByDate(saltRows, 'qty').slice(-14);
+      makeChart('saltChart', 'line', {
+        labels: salt.map(([d]) => formatDate(d)),
+        datasets: [{
+          label: 'Consumo de sal',
+          data: salt.map(([,v]) => v),
+          tension: .45,
+          fill: true,
+          borderWidth: 3,
+          borderColor: c.violet,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#ffffff',
+          pointBorderColor: c.violet,
+          pointBorderWidth: 3,
+          backgroundColor: (ctx) => {
+            const area = ctx.chart.chartArea;
+            return area ? makeGradient(ctx.chart.ctx, area, 'rgba(124, 58, 237, 0.30)', 'rgba(124, 58, 237, 0.02)') : 'rgba(124, 58, 237, 0.12)';
+          }
+        }]
+      }, chartBaseOptions({
+        plugins: {
+          ...chartBaseOptions().plugins,
+          legend: { display: false },
+          tooltip: {
+            ...chartBaseOptions().plugins.tooltip,
+            callbacks: { label: (ctx) => `Sal: ${number(ctx.parsed.y)} bolsas / kg` }
+          }
+        }
+      }));
+    }
+
+    function renderProduction() {
+      document.getElementById('productionTable').innerHTML = `<thead><tr><th>Fecha</th><th>Empleado</th><th>Sector</th><th>Producción</th><th>Sal</th><th>Origen</th><th>Acciones</th></tr></thead><tbody>${state.production.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<tr><td>${formatDateFull(p.date)}</td><td>${escapeHtml(p.employee)}</td><td>${escapeHtml(p.sector)}</td><td><strong>${number(p.qty)}</strong></td><td>${number(p.salt)}</td><td>${escapeHtml(p.origin || 'Manual')}</td><td class="actions-cell"><button class="icon-btn" onclick="editProduction('${p.id}')">✎</button><button class="icon-btn" onclick="deleteItem('production','${p.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="7">Sin registros.</td></tr>`}</tbody>`;
+    }
+
+    function addProduction() {
+      const date = document.getElementById('prodDate').value || toISODate(new Date());
+      const employee = document.getElementById('prodEmployee').value;
+      const sector = document.getElementById('prodSector').value;
+      const qty = Number(document.getElementById('prodQty').value || 0);
+      const salt = Number(document.getElementById('prodSalt').value || 0);
+      if (!employee || !sector || (!qty && !salt)) return toast('Completá empleado, sector y cantidad.');
+      state.production.push({ id:uid(), date, employee, sector, qty, salt, origin:'Manual' });
+      if (salt > 0) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, user:employee });
+      saveState();
+      document.getElementById('prodQty').value = '';
+      document.getElementById('prodSalt').value = '';
+      refreshUI();
+      toast('Producción guardada.');
+    }
+
+    function editProduction(id) {
+      const p = state.production.find(x=>x.id===id);
+      if (!p) return;
+      document.getElementById('prodDate').value = p.date;
+      document.getElementById('prodEmployee').value = p.employee;
+      document.getElementById('prodSector').value = p.sector;
+      document.getElementById('prodQty').value = p.qty;
+      document.getElementById('prodSalt').value = p.salt;
+      state.production = state.production.filter(x=>x.id!==id);
+      saveState();
+      refreshUI();
+      toast('Registro listo para editar. Guardalo nuevamente.');
+    }
+
+    function parseWhatsapp() {
+      const text = document.getElementById('whatsappText').value;
+      if (!text.trim()) return toast('Pegá un mensaje para procesar.');
+      const date = parseDateAny((text.match(/(?:fecha|día|dia)\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i) || [])[1]) || toISODate(new Date());
+      const lines = text.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+      let sector = 'Sin sector';
+      let added = 0;
+      for (const line of lines) {
+        const clean = line.replace(/[✅•\-]/g,'').trim();
+        if (!clean || /total|fecha|sal\s*:/i.test(clean)) continue;
+        const sectorMatch = state.config.sectors.find(s => clean.toLowerCase().includes(s.toLowerCase()));
+        if (sectorMatch && !clean.includes(':')) { sector = sectorMatch; continue; }
+        const pair = clean.match(/^([A-Za-zÁÉÍÓÚÜÑáéíóúüñ .]+)\s*:\s*(\d+(?:[\.,]\d+)?)/);
+        if (pair) {
+          const employeeRaw = pair[1].trim();
+          const qty = Number(pair[2].replace(',','.')) || 0;
+          if (qty > 0) {
+            const employee = normalizeEmployeeName(employeeRaw);
+            state.production.push({ id:uid(), date, employee, sector, qty, salt:0, origin:'WhatsApp' });
+            added++;
+          }
+        }
+      }
+      saveState();
+      refreshUI();
+      toast(`Mensaje procesado: ${added} registros cargados.`);
+    }
+
+    function normalizeEmployeeName(raw) {
+      const found = state.employees.find(e => e.name.toLowerCase() === raw.toLowerCase() || fullName(e).toLowerCase().includes(raw.toLowerCase()));
+      return found ? fullName(found) : raw;
+    }
+
+    function loadWhatsappExample() {
+      document.getElementById('whatsappText').value = `Fecha: 12/05/26\n\nResalado\nMariel: 227\nCristina: 345\nCandela: 250\nTotal: 822\nSal: 35\n\nSacudido\nMarcelo: 540\nLeo: 566\nTotal: 1106`;
+    }
+
+    async function importProductionFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        if (!window.XLSX) return toast('No cargó la librería XLSX. Verificá internet o usá CSV.');
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval:'' });
+        let added = 0;
+        rows.forEach(r => {
+          const keys = Object.keys(r);
+          const get = (...names) => {
+            const k = keys.find(x => names.some(n => x.toLowerCase().includes(n)));
+            return k ? r[k] : '';
+          };
+          const date = parseDateAny(get('fecha','día','dia'));
+          const employee = String(get('empleado','operario','nombre') || '').trim();
+          const sector = String(get('sector','línea','linea','area') || 'Sin sector').trim();
+          const qty = Number(String(get('cantidad','producción','produccion','unidad')).replace(',','.')) || 0;
+          const salt = Number(String(get('sal')).replace(',','.')) || 0;
+          if (employee && (qty || salt)) {
+            state.production.push({ id:uid(), date, employee, sector, qty, salt, origin:'Excel' });
+            if (salt) state.salt.push({ id:uid(), date, type:'Salida', qty:salt, origin:'Producción ' + sector, user:employee });
+            added++;
+          }
+        });
+        saveState(); refreshUI(); toast(`Excel importado: ${added} registros.`);
+      } catch (err) { console.error(err); toast('No pude importar el archivo. Revisá columnas/formato.'); }
+      event.target.value = '';
+    }
+
+    function renderAttendance() {
+      const date = document.getElementById('attFilterDate').value;
+      const shift = document.getElementById('attFilterShift').value;
+      const status = document.getElementById('attFilterStatus').value;
+      let rows = state.attendance.slice();
+      if (date) rows = rows.filter(a => a.date === date);
+      if (shift) rows = rows.filter(a => a.shift === shift);
+      if (status) rows = rows.filter(a => a.status === status);
+      const counts = {
+        Presentes: rows.filter(a=>a.status==='Presente' || a.status==='Horas extra').length,
+        Ausentes: rows.filter(a=>a.status==='Ausente').length,
+        Retrasos: rows.filter(a=>a.status==='Retraso').length,
+        'Salidas anticipadas': rows.filter(a=>a.status==='Salida anticipada').length
+      };
+      document.getElementById('attendanceSummary').innerHTML = [
+        kpi('Presentes', counts.Presentes, 'personas', 'users', 'green'),
+        kpi('Ausentes', counts.Ausentes, 'personas', 'alert', 'red'),
+        kpi('Retrasos', counts.Retrasos, 'personas', 'alert', 'amber'),
+        kpi('Salidas anticipadas', counts['Salidas anticipadas'], 'personas', 'alert', 'blue')
+      ].join('');
+      document.getElementById('attendanceTable').innerHTML = `<thead><tr><th>Fecha</th><th>Empleado</th><th>Turno</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Observación</th><th>Acciones</th></tr></thead><tbody>${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(a=>`<tr><td>${formatDateFull(a.date)}</td><td>${escapeHtml(a.employee)}</td><td>${escapeHtml(a.shift)}</td><td>${a.in || '-'}</td><td>${a.out || '-'}</td><td>${statusBadge(a.status)}</td><td>${escapeHtml(a.obs || '-')}</td><td class="actions-cell"><button class="icon-btn" onclick="editAttendance('${a.id}')">✎</button><button class="icon-btn" onclick="deleteItem('attendance','${a.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="8">Sin registros.</td></tr>`}</tbody>`;
+    }
+
+    function addAttendance() {
+      const item = {
+        id: uid(),
+        date: document.getElementById('attDate').value || toISODate(new Date()),
+        employee: document.getElementById('attEmployee').value,
+        shift: document.getElementById('attShift').value,
+        in: document.getElementById('attIn').value,
+        out: document.getElementById('attOut').value,
+        status: document.getElementById('attStatus').value,
+        obs: document.getElementById('attObs').value
+      };
+      if (!item.employee || !item.shift) return toast('Completá empleado y turno.');
+      state.attendance.push(item);
+      saveState();
+      ['attIn','attOut','attObs'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('attFilterDate').value = item.date;
+      refreshUI();
+      toast('Asistencia guardada.');
+    }
+
+    function editAttendance(id) {
+      const a = state.attendance.find(x=>x.id===id);
+      if (!a) return;
+      document.getElementById('attDate').value = a.date;
+      document.getElementById('attEmployee').value = a.employee;
+      document.getElementById('attShift').value = a.shift;
+      document.getElementById('attIn').value = a.in;
+      document.getElementById('attOut').value = a.out;
+      document.getElementById('attStatus').value = a.status;
+      document.getElementById('attObs').value = a.obs;
+      state.attendance = state.attendance.filter(x=>x.id!==id);
+      saveState(); refreshUI(); toast('Asistencia lista para editar. Guardala nuevamente.');
+    }
+
+    function renderTracking() {
+      const start = document.getElementById('weekStart').value || addDaysISO(toISODate(new Date()), -4);
+      const days = Array.from({length:7}, (_,i)=>addDaysISO(start,i));
+      const names = state.employees.filter(e=>e.status!=='Baja' && e.status!=='Administrativo').map(fullName);
+      const headers = ['Empleado', ...days.map(d => formatDate(d)), 'Estado semanal'];
+      let html = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+      names.forEach((name, idx) => {
+        const statuses = days.map(day => {
+          const a = state.attendance.find(x=>x.employee===name && x.date===day);
+          if (!a) return 'gray';
+          if (a.status === 'Presente' || a.status === 'Horas extra') return 'green';
+          if (a.status === 'Retraso' || a.status === 'Salida anticipada') return 'amber';
+          return 'red';
+        });
+        const red = statuses.filter(s=>s==='red').length;
+        const amber = statuses.filter(s=>s==='amber').length;
+        const status = red > 0 ? 'Revisar' : amber > 1 ? 'Regular' : 'Óptimo';
+        html += `<tr onclick="selectTracking('${escapeHtml(name)}')" style="cursor:pointer;"><td><strong>${escapeHtml(name)}</strong></td>${statuses.map(s=>`<td><span class="status-dot dot-${s}"></span></td>`).join('')}<td>${statusBadge(status)}</td></tr>`;
+      });
+      html += `</tbody>`;
+      document.getElementById('trackingTable').innerHTML = html;
+      selectTracking(names[0] || 'Sin empleado');
+    }
+
+    function selectTracking(name) {
+      const emp = state.employees.find(e=>fullName(e)===name) || state.employees[0];
+      if (!emp) { document.getElementById('trackingDetail').innerHTML = '<div class="empty">Sin empleados cargados.</div>'; return; }
+      const start = document.getElementById('weekStart').value || addDaysISO(toISODate(new Date()), -4);
+      const days = Array.from({length:7}, (_,i)=>addDaysISO(start,i));
+      const att = state.attendance.filter(a => a.employee === fullName(emp) && days.includes(a.date));
+      const present = att.filter(a=>a.status!=='Ausente').length;
+      const status = att.some(a=>a.status==='Ausente') ? 'Revisar' : att.some(a=>a.status==='Retraso' || a.status==='Salida anticipada') ? 'Regular' : 'Óptimo';
+      const initials = `${emp.name?.[0]||''}${emp.last?.[0]||''}`.toUpperCase();
+      document.getElementById('trackingDetail').innerHTML = `<div class="person-head"><div class="avatar">${initials}</div><div><h4>${escapeHtml(fullName(emp))}</h4><p>${escapeHtml(emp.role)} · ${escapeHtml(emp.status)}</p></div></div><div class="detail-row"><span>Sector</span><strong>${escapeHtml(emp.area)}</strong></div><div class="detail-row"><span>Turno</span><strong>${escapeHtml(emp.shift)}</strong></div><div class="detail-row"><span>Estado semanal</span><strong>${statusBadge(status)}</strong></div><div class="detail-row"><span>Asistencia</span><strong>${present}/5 días</strong></div><div class="detail-row"><span>Observación</span><strong>${status === 'Óptimo' ? 'Sin novedades' : 'Revisar registros'}</strong></div>`;
+    }
+
+    function renderHistory() {
+      const from = document.getElementById('histFrom').value;
+      const to = document.getElementById('histTo').value;
+      const emp = document.getElementById('histEmployee').value;
+      const sector = document.getElementById('histSector').value;
+      const type = document.getElementById('histType').value;
+      let rows = [];
+      state.production.forEach(p => rows.push({date:p.date, employee:p.employee, sector:p.sector, type:'Producción', desc:`Producción ${number(p.qty)} / Sal ${number(p.salt)}`, user:p.origin || 'Manual'}));
+      state.attendance.forEach(a => rows.push({date:a.date, employee:a.employee, sector:a.shift, type:'Presentismo', desc:`${a.status} · Entrada ${a.in||'-'} / Salida ${a.out||'-'} ${a.obs ? '· ' + a.obs : ''}`, user:'Sistema'}));
+      state.salt.forEach(s => rows.push({date:s.date, employee:s.user || 'Sistema', sector:s.origin, type:'Sal', desc:`${s.type} de ${number(s.qty)}`, user:s.user || 'Sistema'}));
+      state.employees.forEach(e => rows.push({date:e.created || toISODate(new Date()), employee:fullName(e), sector:e.area, type:'Empleado', desc:`${e.role} · ${e.status}`, user:'Sistema'}));
+      if (from) rows = rows.filter(r=>r.date >= from);
+      if (to) rows = rows.filter(r=>r.date <= to);
+      if (emp) rows = rows.filter(r=>r.employee === emp);
+      if (sector) rows = rows.filter(r=>r.sector === sector || r.sector?.includes(sector));
+      if (type) rows = rows.filter(r=>r.type === type);
+      rows.sort((a,b)=>b.date.localeCompare(a.date));
+      document.getElementById('historyCount').textContent = `Mostrando ${rows.length} registros`;
+      document.getElementById('historyTable').innerHTML = `<thead><tr><th>Fecha</th><th>Empleado / Usuario</th><th>Sector / Origen</th><th>Tipo</th><th>Descripción</th><th>Usuario</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${formatDateFull(r.date)}</td><td>${escapeHtml(r.employee)}</td><td>${escapeHtml(r.sector)}</td><td>${statusBadge(r.type)}</td><td>${escapeHtml(r.desc)}</td><td>${escapeHtml(r.user)}</td></tr>`).join('') || `<tr><td colspan="6">Sin registros.</td></tr>`}</tbody>`;
+      window._historyRows = rows;
+    }
+
+    function renderSalt() {
+      const stock = state.salt.reduce((a,s)=> a + (s.type==='Entrada' ? Number(s.qty||0) : -Number(s.qty||0)), 0);
+      const today = toISODate(new Date());
+      const usedToday = state.salt.filter(s=>s.type==='Salida' && s.date===today).reduce((a,s)=>a+Number(s.qty||0),0);
+      const last7 = Array.from({length:7},(_,i)=>addDaysISO(today, -i));
+      const used7 = state.salt.filter(s=>s.type==='Salida' && last7.includes(s.date)).reduce((a,s)=>a+Number(s.qty||0),0);
+      const avg = used7 / 7;
+      const daysLeft = avg > 0 ? Math.max(0, Math.floor(stock / avg)) : 0;
+      document.getElementById('saltKpis').innerHTML = [
+        kpi('Sal disponible', number(stock), 'stock actual', 'salt', stock < 0 ? 'red' : 'blue'),
+        kpi('Sal usada hoy', number(usedToday), 'actualizado hoy', 'salt', 'blue'),
+        kpi('Promedio diario', moneyless(avg), 'últimos 7 días', 'prod', 'blue'),
+        kpi('Días estimados restantes', number(daysLeft), 'con consumo actual', 'alert', daysLeft <= 3 ? 'red' : 'blue')
+      ].join('');
+      document.getElementById('saltTable').innerHTML = `<thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Origen / destino</th><th>Usuario</th><th>Acciones</th></tr></thead><tbody>${state.salt.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>`<tr><td>${formatDateFull(s.date)}</td><td>${statusBadge(s.type)}</td><td><strong class="${s.type==='Entrada'?'green':'red'}">${s.type==='Entrada'?'+':'-'}${number(s.qty)}</strong></td><td>${escapeHtml(s.origin)}</td><td>${escapeHtml(s.user || '-')}</td><td class="actions-cell"><button class="icon-btn" onclick="deleteItem('salt','${s.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="6">Sin movimientos.</td></tr>`}</tbody>`;
+    }
+
+    function addSaltMove() {
+      const item = { id:uid(), date:document.getElementById('saltDate').value || toISODate(new Date()), type:document.getElementById('saltType').value, qty:Number(document.getElementById('saltQty').value || 0), origin:document.getElementById('saltOrigin').value, user:document.getElementById('saltUser').value || 'Sistema' };
+      if (!item.qty || !item.origin) return toast('Completá cantidad y origen/destino.');
+      state.salt.push(item); saveState(); document.getElementById('saltQty').value=''; refreshUI(); toast('Movimiento de sal guardado.');
+    }
+
+    function renderEmployees() {
+      const search = (document.getElementById('empSearch').value || '').toLowerCase();
+      const status = document.getElementById('empStatusFilter').value;
+      const shift = document.getElementById('empShiftFilter').value;
+      let rows = state.employees.slice();
+      if (search) rows = rows.filter(e => `${fullName(e)} ${e.area} ${e.role}`.toLowerCase().includes(search));
+      if (status) rows = rows.filter(e=>e.status===status);
+      if (shift) rows = rows.filter(e=>e.shift===shift);
+      document.getElementById('employeesTable').innerHTML = `<thead><tr><th>ID</th><th>Nombre</th><th>Área</th><th>Turno</th><th>Rango</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${rows.map((e,i)=>`<tr><td>${String(i+101).padStart(3,'0')}</td><td><strong>${escapeHtml(fullName(e))}</strong></td><td>${escapeHtml(e.area)}</td><td>${escapeHtml(e.shift)}</td><td>${escapeHtml(e.role)}</td><td>${statusBadge(e.status)}</td><td class="actions-cell"><button class="icon-btn" onclick="openEmployeeModal('${e.id}')">✎</button><button class="icon-btn" onclick="toggleEmployeeStatus('${e.id}')">${e.status==='Baja'?'↩':'⊘'}</button><button class="icon-btn" onclick="deleteEmployeeHard('${e.id}')">🗑</button></td></tr>`).join('') || `<tr><td colspan="7">Sin empleados.</td></tr>`}</tbody>`;
+    }
+
+    function openEmployeeModal(id='') {
+      const modal = document.getElementById('employeeModal');
+      document.getElementById('empIdEdit').value = id;
+      const e = state.employees.find(x=>x.id===id);
+      document.getElementById('employeeModalTitle').textContent = e ? 'Modificar empleado' : 'Agregar empleado';
+      document.getElementById('empName').value = e?.name || '';
+      document.getElementById('empLast').value = e?.last || '';
+      document.getElementById('empArea').value = e?.area || state.config.sectors[0];
+      document.getElementById('empShift').value = e?.shift || state.config.shifts[0];
+      document.getElementById('empRole').value = e?.role || 'Operario';
+      document.getElementById('empStatus').value = e?.status || 'Activo';
+      modal.classList.add('active');
+    }
+    function closeEmployeeModal(){ document.getElementById('employeeModal').classList.remove('active'); }
+
+    function saveEmployee() {
+      const id = document.getElementById('empIdEdit').value;
+      const item = { id: id || uid(), name:document.getElementById('empName').value.trim(), last:document.getElementById('empLast').value.trim(), area:document.getElementById('empArea').value, shift:document.getElementById('empShift').value, role:document.getElementById('empRole').value, status:document.getElementById('empStatus').value, created: toISODate(new Date()) };
+      if (!item.name || !item.last) return toast('Completá nombre y apellido.');
+      if (id) state.employees = state.employees.map(e=>e.id===id ? { ...e, ...item, created:e.created } : e);
+      else state.employees.push(item);
+      saveState(); closeEmployeeModal(); refreshUI(); toast('Empleado guardado.');
+    }
+
+    function toggleEmployeeStatus(id) {
+      const e = state.employees.find(x=>x.id===id); if (!e) return;
+      e.status = e.status === 'Baja' ? 'Activo' : 'Baja';
+      saveState(); refreshUI(); toast(e.status === 'Baja' ? 'Empleado dado de baja.' : 'Empleado restaurado.');
+    }
+
+    function deleteEmployeeHard(id) {
+      if (!confirm('¿Eliminar empleado definitivamente? El historial de registros no se borra, pero el empleado sale de la lista.')) return;
+      state.employees = state.employees.filter(e=>e.id!==id); saveState(); refreshUI(); toast('Empleado eliminado de la lista.');
+    }
+
+    function deleteItem(collection, id) {
+      if (!confirm('¿Eliminar este registro?')) return;
+      state[collection] = state[collection].filter(x=>x.id!==id);
+      saveState(); refreshUI(); toast('Registro eliminado.');
+    }
+
+    function saveConfig() {
+      state.config.sectors = document.getElementById('cfgSectors').value.split('\n').map(x=>x.trim()).filter(Boolean);
+      state.config.shifts = document.getElementById('cfgShifts').value.split('\n').map(x=>x.trim()).filter(Boolean);
+      state.config.plants = document.getElementById('cfgPlants').value.split('\n').map(x=>x.trim()).filter(Boolean);
+      saveState(); refreshSelects(); refreshUI(); toast('Configuración guardada.');
+    }
+
+    function renderConfig() {
+      document.getElementById('cfgSectors').value = state.config.sectors.join('\n');
+      document.getElementById('cfgShifts').value = state.config.shifts.join('\n');
+      document.getElementById('cfgPlants').value = state.config.plants.join('\n');
+    }
+
+    function exportCSV(filename, rows) {
+      if (!rows || !rows.length) return toast('No hay datos para exportar.');
+      const headers = Object.keys(rows[0]);
+      const csv = [headers.join(';'), ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g,'""')}"`).join(';'))].join('\n');
+      downloadFile(filename, csv, 'text/csv;charset=utf-8');
+    }
+
+    function exportTable(type) {
+      const map = { production: state.production, attendance: state.attendance, salt: state.salt, employees: state.employees };
+      exportCSV(`${type}_${toISODate(new Date())}.csv`, map[type] || []);
+    }
+
+    function exportHistory() { renderHistory(); exportCSV(`historial_${toISODate(new Date())}.csv`, window._historyRows || []); }
+
+    function exportAllData() { downloadFile(`backup_panel_planta_${toISODate(new Date())}.json`, JSON.stringify(state, null, 2), 'application/json'); }
+
+    function downloadFile(name, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function restoreBackup(event) {
+      const file = event.target.files[0]; if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!parsed.employees || !parsed.production) throw new Error('Backup inválido');
+        state = parsed; saveState(); refreshSelects(); refreshUI(); toast('Backup restaurado.');
+      } catch (e) { toast('El archivo no parece ser un backup válido.'); }
+      event.target.value = '';
+    }
+
+    function resetDemoConfirm() {
+      if (!confirm('¿Eliminar la base actual y volver a datos de ejemplo?')) return;
+      state = defaultState(); saveState(); init(); toast('Base reiniciada con ejemplo.');
+    }
+
+    function refreshUI() {
+      renderDashboard(); renderProduction(); renderAttendance(); renderTracking(); renderHistory(); renderSalt(); renderEmployees(); renderConfig(); renderCharts();
+    }
+
+    function init() {
+      setDefaults(); refreshSelects(); renderConfig(); refreshUI();
+    }
+
+    init();
+  </script>
+</body>
+</html>
     .sidebar {
       position: sticky;
       top: 0;
