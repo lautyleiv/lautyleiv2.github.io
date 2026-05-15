@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel Integral de Planta</title>
 
-  <!-- Librerías externas opcionales. En GitHub Pages cargan correctamente con internet. -->
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -34,6 +34,99 @@
       --radius-sm: 10px;
       --sidebar: 280px;
       --topbar: 72px;
+    }
+
+
+
+    body.theme-dark {
+      --primary: #60a5fa;
+      --primary-dark: #3b82f6;
+      --primary-soft: rgba(37, 99, 235, .18);
+      --navy: #f8fafc;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #1e293b;
+      --bg: #020617;
+      --card: #0f172a;
+      --green: #4ade80;
+      --green-soft: rgba(22, 163, 74, .18);
+      --red: #f87171;
+      --red-soft: rgba(220, 38, 38, .18);
+      --amber: #fbbf24;
+      --amber-soft: rgba(245, 158, 11, .18);
+      --blue-soft: rgba(37, 99, 235, .18);
+      --purple-soft: rgba(124, 58, 237, .18);
+      --shadow: 0 18px 44px rgba(0, 0, 0, .28);
+      color-scheme: dark;
+    }
+
+    body.theme-dark .sidebar {
+      background: rgba(15, 23, 42, .96);
+      border-right-color: var(--border);
+    }
+
+    body.theme-dark .topbar {
+      background: rgba(2, 6, 23, .88);
+      border-bottom-color: rgba(30, 41, 59, .9);
+    }
+
+    body.theme-dark .mobile-menu,
+    body.theme-dark .pill-date,
+    body.theme-dark .btn-secondary,
+    body.theme-dark .sync-box,
+    body.theme-dark .card,
+    body.theme-dark .kpi-card,
+    body.theme-dark .table-wrap,
+    body.theme-dark .modal-card,
+    body.theme-dark .import-card,
+    body.theme-dark .info-tile,
+    body.theme-dark .person-card {
+      background: var(--card);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    body.theme-dark .nav-btn:hover,
+    body.theme-dark .btn-secondary:hover,
+    body.theme-dark tbody tr:hover td {
+      background: rgba(51, 65, 85, .42);
+    }
+
+    body.theme-dark .field input,
+    body.theme-dark .field select,
+    body.theme-dark .field textarea {
+      background: #020617;
+      border-color: #334155;
+      color: var(--text);
+    }
+
+    body.theme-dark .field input::placeholder,
+    body.theme-dark .field textarea::placeholder {
+      color: #64748b;
+    }
+
+    body.theme-dark th {
+      background: #111827;
+      color: #cbd5e1;
+    }
+
+    body.theme-dark td,
+    body.theme-dark th {
+      border-bottom-color: var(--border);
+    }
+
+    body.theme-dark .note {
+      background: rgba(37, 99, 235, .12);
+      border-color: rgba(96, 165, 250, .35);
+      color: #bfdbfe;
+    }
+
+    body.theme-dark .brand-icon {
+      box-shadow: 0 12px 30px rgba(96, 165, 250, .20);
+    }
+
+    .theme-toggle {
+      min-width: 104px;
     }
 
     * { box-sizing: border-box; }
@@ -503,47 +596,10 @@
 
     .chart-box {
       position: relative;
-      min-height: 340px;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 12% 12%, rgba(37, 99, 235, 0.10), transparent 30%),
-        radial-gradient(circle at 88% 0%, rgba(14, 165, 233, 0.08), transparent 34%),
-        linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      min-height: 310px;
     }
 
-    .chart-box::before {
-      content: "";
-      position: absolute;
-      inset: 72px 18px 18px;
-      border-radius: 22px;
-      background: rgba(248, 250, 252, 0.62);
-      border: 1px solid rgba(226, 232, 240, 0.72);
-      pointer-events: none;
-    }
-
-    .chart-box .section-head,
-    .chart-box canvas {
-      position: relative;
-      z-index: 1;
-    }
-
-    .chart-box canvas {
-      width: 100% !important;
-      height: 292px !important;
-      padding: 8px 6px 0;
-    }
-
-    .chart-box h3::after {
-      content: "";
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      margin-left: 9px;
-      border-radius: 999px;
-      background: var(--primary);
-      box-shadow: 0 0 0 6px rgba(37, 99, 235, .10);
-      vertical-align: middle;
-    }
+    .chart-box canvas { width: 100% !important; height: 280px !important; }
 
     .empty {
       border: 1px dashed #cbd5e1;
@@ -668,6 +724,7 @@
       padding: 18px;
     }
     .modal-backdrop.active { display: grid; }
+    .modal-backdrop:not(.active), .toast-wrap:empty { display: none !important; }
 
     .modal {
       width: min(680px, 100%);
@@ -758,9 +815,7 @@
       gap: 16px;
     }
 
-    .footer-safe {
-      padding-bottom: 10px;
-    }
+    .footer-safe{height:24px;font-size:0;line-height:0;color:transparent;}
 
     @media (max-width: 1180px) {
       .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -846,13 +901,14 @@
         </div>
         <div class="top-actions">
           <div class="pill-date">📅 <span id="todayText"></span></div>
+          <button class="btn btn-secondary btn-sm theme-toggle" id="themeToggle" onclick="toggleTheme()">☾ Oscuro</button>
           <button class="btn btn-secondary btn-sm" onclick="refreshUI()">⟳ Actualizar</button>
           <button class="btn btn-primary btn-sm" onclick="openQuickAdd()">＋ Cargar</button>
         </div>
       </header>
 
       <div class="content">
-        <!-- DASHBOARD -->
+        
         <section class="view active" id="view-dashboard">
           <div class="grid grid-4" id="dashboardKpis"></div>
 
@@ -860,8 +916,8 @@
             <div class="card chart-box">
               <div class="section-head">
                 <div>
-                  <h3>Producción por período</h3>
-                  <p>Barras modernas con línea de tendencia</p>
+                  <h3>Producción por día</h3>
+                  <p>Evolución de producción registrada</p>
                 </div>
               </div>
               <canvas id="productionChart"></canvas>
@@ -870,7 +926,7 @@
               <div class="section-head">
                 <div>
                   <h3>Presentismo</h3>
-                  <p>Dona con porcentaje central</p>
+                  <p>Relación entre presentes y ausentes</p>
                 </div>
               </div>
               <canvas id="attendanceChart"></canvas>
@@ -904,7 +960,7 @@
           </div>
         </section>
 
-        <!-- CARGA DIARIA -->
+        
         <section class="view" id="view-carga">
           <div class="card">
             <div class="section-head">
@@ -954,7 +1010,7 @@
           </div>
         </section>
 
-        <!-- PRESENTISMO -->
+        
         <section class="view" id="view-presentismo">
           <div class="card">
             <div class="section-head"><div><h3>Control diario de asistencia</h3><p>Registrá entrada, salida, estado y observación.</p></div></div>
@@ -985,7 +1041,7 @@
           </div>
         </section>
 
-        <!-- SEGUIMIENTO -->
+        
         <section class="view" id="view-seguimiento">
           <div class="split">
             <div class="card">
@@ -1005,7 +1061,7 @@
           </div>
         </section>
 
-        <!-- HISTORIAL -->
+        
         <section class="view" id="view-historial">
           <div class="card">
             <div class="section-head"><div><h3>Consulta y búsqueda histórica</h3><p>Buscá registros por rango de fecha, empleado, sector y tipo.</p></div></div>
@@ -1024,11 +1080,11 @@
           </div>
         </section>
 
-        <!-- SAL -->
+        
         <section class="view" id="view-sal">
           <div class="grid grid-4" id="saltKpis"></div>
           <div class="grid grid-2" style="margin-top:18px;">
-            <div class="card chart-box"><div class="section-head"><div><h3>Consumo diario de sal</h3><p>Área suave con tendencia de consumo</p></div></div><canvas id="saltChart"></canvas></div>
+            <div class="card chart-box"><div class="section-head"><div><h3>Consumo diario de sal</h3><p>Últimos registros de uso</p></div></div><canvas id="saltChart"></canvas></div>
             <div class="card">
               <div class="section-head"><div><h3>Nuevo movimiento</h3><p>Entrada o salida de sal con origen/destino.</p></div></div>
               <div class="form-row">
@@ -1047,7 +1103,7 @@
           </div>
         </section>
 
-        <!-- EMPLEADOS -->
+        
         <section class="view" id="view-empleados">
           <div class="card">
             <div class="section-head">
@@ -1063,7 +1119,7 @@
           </div>
         </section>
 
-        <!-- REPORTES -->
+        
         <section class="view" id="view-reportes">
           <div class="card">
             <div class="section-head"><div><h3>Reportes y exportación</h3><p>Descargá la base completa o registros específicos.</p></div></div>
@@ -1076,7 +1132,7 @@
           </div>
         </section>
 
-        <!-- CONFIG -->
+        
         <section class="view" id="view-config">
           <div class="grid grid-2">
             <div class="card settings-block">
@@ -1101,7 +1157,7 @@
     </main>
   </div>
 
-  <!-- MODAL EMPLEADO -->
+  
   <div class="modal-backdrop" id="employeeModal">
     <div class="modal">
       <div class="modal-head">
@@ -1136,6 +1192,39 @@
 
     let state = loadState();
     let charts = {};
+    const THEME_KEY = 'panel_integral_planta_theme';
+
+    function getSavedTheme() {
+      return localStorage.getItem(THEME_KEY) || 'light';
+    }
+
+    function applyTheme(theme) {
+      const isDark = theme === 'dark';
+      document.body.classList.toggle('theme-dark', isDark);
+      document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.innerHTML = isDark ? '☀ Claro' : '☾ Oscuro';
+      localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      setTimeout(renderCharts, 40);
+    }
+
+    function toggleTheme() {
+      applyTheme(document.body.classList.contains('theme-dark') ? 'light' : 'dark');
+    }
+
+    function chartPalette() {
+      const isDark = document.body.classList.contains('theme-dark');
+      return {
+        text: isDark ? '#cbd5e1' : '#334155',
+        muted: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? 'rgba(148, 163, 184, .16)' : 'rgba(148, 163, 184, .22)',
+        blue: isDark ? '#60a5fa' : '#2563eb',
+        blueFill: isDark ? 'rgba(96, 165, 250, .16)' : 'rgba(37, 99, 235, .12)',
+        green: isDark ? '#4ade80' : '#16a34a',
+        red: isDark ? '#f87171' : '#dc2626',
+        amber: isDark ? '#fbbf24' : '#f59e0b'
+      };
+    }
 
     function defaultState() {
       const today = toISODate(new Date());
@@ -1332,242 +1421,92 @@
       return Object.entries(out).sort((a,b)=>a[0].localeCompare(b[0]));
     }
 
-    function chartFont(size = 12, weight = '600') {
-      return { family: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', size, weight };
-    }
-
-    function chartPalette() {
-      return {
-        blue: '#2563eb',
-        blue2: '#38bdf8',
-        navy: '#0f172a',
-        muted: '#64748b',
-        grid: 'rgba(148, 163, 184, 0.18)',
-        green: '#16a34a',
-        red: '#ef4444',
-        amber: '#f59e0b',
-        violet: '#7c3aed'
-      };
-    }
-
-    function makeGradient(ctx, area, from, to, vertical = true) {
-      const gradient = vertical
-        ? ctx.createLinearGradient(0, area.top, 0, area.bottom)
-        : ctx.createLinearGradient(area.left, 0, area.right, 0);
-      gradient.addColorStop(0, from);
-      gradient.addColorStop(1, to);
-      return gradient;
-    }
-
-    function chartBaseOptions(extra = {}) {
-      const c = chartPalette();
-      return {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        animation: { duration: 850, easing: 'easeOutQuart' },
-        layout: { padding: { top: 10, right: 14, bottom: 4, left: 8 } },
-        plugins: {
-          legend: {
-            display: true,
-            align: 'start',
-            labels: {
-              usePointStyle: true,
-              pointStyle: 'circle',
-              boxWidth: 8,
-              boxHeight: 8,
-              color: c.muted,
-              padding: 18,
-              font: chartFont(12, '700')
-            }
-          },
-          tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(15, 23, 42, 0.94)',
-            titleColor: '#fff',
-            bodyColor: '#e2e8f0',
-            borderColor: 'rgba(255,255,255,.12)',
-            borderWidth: 1,
-            cornerRadius: 14,
-            padding: 12,
-            displayColors: true,
-            usePointStyle: true,
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label || ctx.label}: ${number(ctx.parsed.y ?? ctx.parsed ?? 0)}`
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false, drawBorder: false },
-            border: { display: false },
-            ticks: { color: c.muted, font: chartFont(11, '700'), maxRotation: 0 }
-          },
-          y: {
-            beginAtZero: true,
-            grid: { color: c.grid, drawBorder: false },
-            border: { display: false },
-            ticks: {
-              color: c.muted,
-              font: chartFont(11, '700'),
-              padding: 8,
-              callback: value => number(value)
-            }
-          }
-        },
-        ...extra
-      };
-    }
-
-    const centerDoughnutTextPlugin = {
-      id: 'centerDoughnutText',
-      afterDraw(chart, args, options) {
-        if (!options || !options.text) return;
-        const { ctx, chartArea } = chart;
-        if (!chartArea) return;
-        const x = (chartArea.left + chartArea.right) / 2;
-        const y = (chartArea.top + chartArea.bottom) / 2;
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#0f172a';
-        ctx.font = '800 28px Inter, system-ui, sans-serif';
-        ctx.fillText(options.text, x, y - 8);
-        ctx.fillStyle = '#64748b';
-        ctx.font = '700 12px Inter, system-ui, sans-serif';
-        ctx.fillText(options.subtext || '', x, y + 18);
-        ctx.restore();
-      }
-    };
-
-    function movingAverage(values) {
-      return values.map((_, i) => {
-        const slice = values.slice(Math.max(0, i - 2), i + 1);
-        return Math.round(slice.reduce((a,b)=>a+b,0) / Math.max(1, slice.length));
-      });
-    }
-
-    function makeChart(id, type, data, options = {}, plugins = []) {
-      const canvas = document.getElementById(id);
-      if (!canvas || !window.Chart) return;
+    function makeChart(id, type, data, options={}) {
+      const ctx = document.getElementById(id);
+      if (!ctx || !window.Chart) return;
       if (charts[id]) charts[id].destroy();
-      charts[id] = new Chart(canvas, { type, data, options, plugins });
+      const p = chartPalette();
+      charts[id] = new Chart(ctx, {
+        type,
+        data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          color: p.text,
+          plugins: {
+            legend: {
+              display: true,
+              labels: { boxWidth: 10, usePointStyle: true, color: p.text, font: { weight: 650 } }
+            },
+            tooltip: {
+              backgroundColor: document.body.classList.contains('theme-dark') ? '#0f172a' : '#ffffff',
+              titleColor: p.text,
+              bodyColor: p.text,
+              borderColor: document.body.classList.contains('theme-dark') ? '#334155' : '#e5e7eb',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true
+            }
+          },
+          scales: {
+            x: { ticks: { color: p.muted }, grid: { color: p.grid } },
+            y: { ticks: { color: p.muted }, grid: { color: p.grid }, beginAtZero: true }
+          },
+          ...options
+        }
+      });
     }
 
     function renderCharts() {
       if (!window.Chart) return;
-      const c = chartPalette();
-      const range = typeof getDashboardRange === 'function' ? getDashboardRange() : { from: '', to: '' };
-      const prodRows = state.production.filter(p => !range.from || inRange(p.date, range.from, range.to));
-      const prod = groupByDate(prodRows, 'qty').slice(-14);
-      const prodLabels = prod.map(([d]) => formatDate(d));
-      const prodData = prod.map(([,v]) => v);
-      const prodTrend = movingAverage(prodData);
+      const p = chartPalette();
+      const prod = groupByDate(state.production, 'qty').slice(-12);
+      makeChart('productionChart', 'line', {
+        labels: prod.map(([d])=>formatDate(d)),
+        datasets: [{
+          label:'Producción',
+          data: prod.map(([,v])=>v),
+          tension:.38,
+          fill:true,
+          borderWidth:3,
+          pointRadius:4,
+          pointHoverRadius:6,
+          borderColor:p.blue,
+          backgroundColor:p.blueFill,
+          pointBackgroundColor:p.blue,
+          pointBorderColor:document.body.classList.contains('theme-dark') ? '#0f172a' : '#ffffff'
+        }]
+      }, { scales:{ y:{ beginAtZero:true, ticks:{ color:p.muted }, grid:{ color:p.grid } }, x:{ ticks:{ color:p.muted }, grid:{ color:p.grid } } } });
 
-      makeChart('productionChart', 'bar', {
-        labels: prodLabels,
-        datasets: [
-          {
-            type: 'bar',
-            label: 'Producción',
-            data: prodData,
-            borderRadius: 14,
-            borderSkipped: false,
-            maxBarThickness: 42,
-            backgroundColor: (ctx) => {
-              const area = ctx.chart.chartArea;
-              return area ? makeGradient(ctx.chart.ctx, area, 'rgba(37, 99, 235, 0.88)', 'rgba(56, 189, 248, 0.28)') : 'rgba(37, 99, 235, 0.75)';
-            },
-            hoverBackgroundColor: 'rgba(37, 99, 235, 0.95)'
-          },
-          {
-            type: 'line',
-            label: 'Tendencia',
-            data: prodTrend,
-            tension: .42,
-            borderColor: c.navy,
-            backgroundColor: c.navy,
-            borderWidth: 3,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHoverBorderWidth: 3,
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: c.navy,
-            fill: false
-          }
-        ]
-      }, chartBaseOptions());
-
-      const attRows = state.attendance.filter(a => !range.from || inRange(a.date, range.from, range.to));
-      const present = attRows.filter(a => a.status !== 'Ausente').length;
-      const absent = attRows.filter(a => a.status === 'Ausente').length;
-      const total = present + absent;
-      const percent = total ? Math.round((present / total) * 100) : 0;
+      const present = state.attendance.filter(a => a.status !== 'Ausente').length;
+      const absent = state.attendance.filter(a => a.status === 'Ausente').length;
       makeChart('attendanceChart', 'doughnut', {
-        labels: ['Presentes', 'Ausentes'],
-        datasets: [{
-          data: [present, absent],
-          backgroundColor: [c.green, c.red],
-          hoverBackgroundColor: ['#22c55e', '#f87171'],
-          borderColor: '#ffffff',
-          borderWidth: 6,
-          spacing: 4,
-          hoverOffset: 8
+        labels:['Presentes / con registro', 'Ausentes'],
+        datasets:[{
+          data:[present, absent],
+          borderWidth:0,
+          backgroundColor:[p.green, p.red],
+          hoverOffset:8
         }]
-      }, {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '74%',
-        rotation: -90,
-        animation: { animateRotate: true, duration: 900, easing: 'easeOutQuart' },
-        plugins: {
-          centerDoughnutText: { text: `${percent}%`, subtext: 'presentismo' },
-          legend: {
-            position: 'bottom',
-            labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 18, color: c.muted, font: chartFont(12, '700') }
-          },
-          tooltip: {
-            backgroundColor: 'rgba(15, 23, 42, 0.94)',
-            borderColor: 'rgba(255,255,255,.12)',
-            borderWidth: 1,
-            cornerRadius: 14,
-            padding: 12,
-            callbacks: { label: (ctx) => `${ctx.label}: ${number(ctx.parsed)} personas` }
-          }
-        }
-      }, [centerDoughnutTextPlugin]);
+      }, { cutout:'68%', scales:{} });
 
-      const saltRows = state.salt.filter(s => s.type === 'Salida' && (!range.from || inRange(s.date, range.from, range.to)));
-      const salt = groupByDate(saltRows, 'qty').slice(-14);
+      const salt = groupByDate(state.salt.filter(s=>s.type==='Salida'), 'qty').slice(-12);
       makeChart('saltChart', 'line', {
-        labels: salt.map(([d]) => formatDate(d)),
-        datasets: [{
-          label: 'Consumo de sal',
-          data: salt.map(([,v]) => v),
-          tension: .45,
-          fill: true,
-          borderWidth: 3,
-          borderColor: c.violet,
-          pointRadius: 4,
-          pointHoverRadius: 7,
-          pointBackgroundColor: '#ffffff',
-          pointBorderColor: c.violet,
-          pointBorderWidth: 3,
-          backgroundColor: (ctx) => {
-            const area = ctx.chart.chartArea;
-            return area ? makeGradient(ctx.chart.ctx, area, 'rgba(124, 58, 237, 0.30)', 'rgba(124, 58, 237, 0.02)') : 'rgba(124, 58, 237, 0.12)';
-          }
+        labels: salt.map(([d])=>formatDate(d)),
+        datasets:[{
+          label:'Consumo de sal',
+          data:salt.map(([,v])=>v),
+          tension:.38,
+          fill:true,
+          borderWidth:3,
+          pointRadius:4,
+          pointHoverRadius:6,
+          borderColor:p.amber,
+          backgroundColor:document.body.classList.contains('theme-dark') ? 'rgba(251, 191, 36, .14)' : 'rgba(245, 158, 11, .12)',
+          pointBackgroundColor:p.amber,
+          pointBorderColor:document.body.classList.contains('theme-dark') ? '#0f172a' : '#ffffff'
         }]
-      }, chartBaseOptions({
-        plugins: {
-          ...chartBaseOptions().plugins,
-          legend: { display: false },
-          tooltip: {
-            ...chartBaseOptions().plugins.tooltip,
-            callbacks: { label: (ctx) => `Sal: ${number(ctx.parsed.y)} bolsas / kg` }
-          }
-        }
-      }));
+      }, { scales:{ y:{ beginAtZero:true, ticks:{ color:p.muted }, grid:{ color:p.grid } }, x:{ ticks:{ color:p.muted }, grid:{ color:p.grid } } } });
     }
 
     function renderProduction() {
@@ -1924,6 +1863,7 @@
       setDefaults(); refreshSelects(); renderConfig(); refreshUI();
     }
 
+    applyTheme(getSavedTheme());
     init();
   </script>
 </body>
