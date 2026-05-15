@@ -1215,15 +1215,61 @@
     function chartPalette() {
       const isDark = document.body.classList.contains('theme-dark');
       return {
-        text: isDark ? '#cbd5e1' : '#334155',
+        text: isDark ? '#e2e8f0' : '#0f172a',
         muted: isDark ? '#94a3b8' : '#64748b',
-        grid: isDark ? 'rgba(148, 163, 184, .16)' : 'rgba(148, 163, 184, .22)',
-        blue: isDark ? '#60a5fa' : '#2563eb',
-        blueFill: isDark ? 'rgba(96, 165, 250, .16)' : 'rgba(37, 99, 235, .12)',
-        green: isDark ? '#4ade80' : '#16a34a',
-        red: isDark ? '#f87171' : '#dc2626',
-        amber: isDark ? '#fbbf24' : '#f59e0b'
+        grid: isDark ? 'rgba(148, 163, 184, .12)' : 'rgba(148, 163, 184, .16)',
+        blue: isDark ? '#7dd3fc' : '#2563eb',
+        blue2: isDark ? '#60a5fa' : '#3b82f6',
+        cyan: isDark ? '#22d3ee' : '#06b6d4',
+        green: isDark ? '#34d399' : '#10b981',
+        red: isDark ? '#fb7185' : '#ef4444',
+        amber: isDark ? '#fbbf24' : '#f59e0b',
+        purple: isDark ? '#c084fc' : '#8b5cf6',
+        panel: isDark ? '#111827' : '#ffffff',
+        border: isDark ? '#334155' : '#e2e8f0'
       };
+    }
+
+    const centerLabelPlugin = {
+      id: 'centerLabelPlugin',
+      afterDraw(chart, args, pluginOptions) {
+        if (chart.config.type !== 'doughnut') return;
+        const opts = chart.options.plugins && chart.options.plugins.centerLabel;
+        if (!opts || !opts.text) return;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || !meta.data.length) return;
+        const {ctx} = chart;
+        const x = meta.data[0].x;
+        const y = meta.data[0].y;
+        const p = chartPalette();
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = p.text;
+        ctx.font = '800 28px Inter, system-ui, sans-serif';
+        ctx.fillText(opts.text, x, y - 6);
+        ctx.fillStyle = p.muted;
+        ctx.font = '600 12px Inter, system-ui, sans-serif';
+        ctx.fillText(opts.subtext || '', x, y + 16);
+        ctx.restore();
+      }
+    };
+
+    function ensureChartPlugins() {
+      if (!window.Chart) return;
+      const already = Chart.registry.plugins.get('centerLabelPlugin');
+      if (!already) Chart.register(centerLabelPlugin);
+    }
+
+    function buildGradient(chart, colors, horizontal=false) {
+      const {ctx, chartArea} = chart;
+      if (!chartArea) return colors[0];
+      const gradient = horizontal
+        ? ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
+        : ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+      const step = 1 / Math.max(colors.length - 1, 1);
+      colors.forEach((c, i) => gradient.addColorStop(i * step, c));
+      return gradient;
     }
 
     function defaultState() {
@@ -1424,89 +1470,175 @@
     function makeChart(id, type, data, options={}) {
       const ctx = document.getElementById(id);
       if (!ctx || !window.Chart) return;
+      ensureChartPlugins();
       if (charts[id]) charts[id].destroy();
       const p = chartPalette();
-      charts[id] = new Chart(ctx, {
-        type,
-        data,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          color: p.text,
-          plugins: {
-            legend: {
-              display: true,
-              labels: { boxWidth: 10, usePointStyle: true, color: p.text, font: { weight: 650 } }
-            },
-            tooltip: {
-              backgroundColor: document.body.classList.contains('theme-dark') ? '#0f172a' : '#ffffff',
-              titleColor: p.text,
-              bodyColor: p.text,
-              borderColor: document.body.classList.contains('theme-dark') ? '#334155' : '#e5e7eb',
-              borderWidth: 1,
-              padding: 12,
-              displayColors: true
-            }
-          },
-          scales: {
-            x: { ticks: { color: p.muted }, grid: { color: p.grid } },
-            y: { ticks: { color: p.muted }, grid: { color: p.grid }, beginAtZero: true }
-          },
-          ...options
+      const basePlugins = {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'start',
+          labels: {
+            boxWidth: 10,
+            boxHeight: 10,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            color: p.text,
+            padding: 18,
+            font: { weight: 700 }
+          }
+        },
+        tooltip: {
+          backgroundColor: document.body.classList.contains('theme-dark') ? 'rgba(15, 23, 42, .96)' : 'rgba(255, 255, 255, .98)',
+          titleColor: p.text,
+          bodyColor: p.text,
+          borderColor: p.border,
+          borderWidth: 1,
+          cornerRadius: 14,
+          padding: 14,
+          titleFont: { weight: 800 },
+          bodyFont: { weight: 600 },
+          displayColors: true,
+          boxPadding: 6
         }
-      });
+      };
+      const baseScales = {
+        x: {
+          ticks: { color: p.muted, font: { weight: 600 } },
+          grid: { display: false, drawBorder: false }
+        },
+        y: {
+          ticks: { color: p.muted, font: { weight: 600 } },
+          grid: { color: p.grid, drawBorder: false },
+          beginAtZero: true
+        }
+      };
+      const mergedOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 850, easing: 'easeOutQuart' },
+        interaction: { intersect: false, mode: 'index' },
+        color: p.text,
+        layout: { padding: { top: 8, right: 8, bottom: 0, left: 0 } },
+        ...options,
+        plugins: {
+          ...basePlugins,
+          ...(options.plugins || {}),
+          legend: { ...basePlugins.legend, ...((options.plugins || {}).legend || {}) },
+          tooltip: { ...basePlugins.tooltip, ...((options.plugins || {}).tooltip || {}) }
+        },
+        scales: {
+          ...baseScales,
+          ...(options.scales || {}),
+          x: { ...baseScales.x, ...((options.scales || {}).x || {}) },
+          y: { ...baseScales.y, ...((options.scales || {}).y || {}) }
+        }
+      };
+      charts[id] = new Chart(ctx, { type, data, options: mergedOptions });
     }
 
     function renderCharts() {
       if (!window.Chart) return;
+      ensureChartPlugins();
       const p = chartPalette();
+
       const prod = groupByDate(state.production, 'qty').slice(-12);
-      makeChart('productionChart', 'line', {
-        labels: prod.map(([d])=>formatDate(d)),
+      const prodLabels = prod.map(([d]) => formatDate(d));
+      const prodValues = prod.map(([,v]) => v);
+      makeChart('productionChart', 'bar', {
+        labels: prodLabels,
         datasets: [{
-          label:'Producción',
-          data: prod.map(([,v])=>v),
-          tension:.38,
-          fill:true,
-          borderWidth:3,
-          pointRadius:4,
-          pointHoverRadius:6,
-          borderColor:p.blue,
-          backgroundColor:p.blueFill,
-          pointBackgroundColor:p.blue,
-          pointBorderColor:document.body.classList.contains('theme-dark') ? '#0f172a' : '#ffffff'
+          type: 'bar',
+          label: 'Producción diaria',
+          data: prodValues,
+          borderRadius: 12,
+          borderSkipped: false,
+          maxBarThickness: 34,
+          backgroundColor(context) {
+            const chart = context.chart;
+            return buildGradient(chart, document.body.classList.contains('theme-dark')
+              ? ['rgba(34, 211, 238, .95)', 'rgba(96, 165, 250, .88)']
+              : ['rgba(6, 182, 212, .95)', 'rgba(59, 130, 246, .88)']);
+          }
+        }, {
+          type: 'line',
+          label: 'Tendencia',
+          data: prodValues,
+          tension: .42,
+          fill: false,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: p.panel,
+          pointBorderWidth: 3,
+          pointBorderColor: p.blue,
+          borderColor: p.blue
         }]
-      }, { scales:{ y:{ beginAtZero:true, ticks:{ color:p.muted }, grid:{ color:p.grid } }, x:{ ticks:{ color:p.muted }, grid:{ color:p.grid } } } });
+      }, {
+        plugins: {
+          legend: { display: true }
+        },
+        scales: {
+          y: { beginAtZero:true, ticks:{ color:p.muted }, grid:{ color:p.grid } },
+          x: { ticks:{ color:p.muted }, grid:{ display:false } }
+        }
+      });
 
       const present = state.attendance.filter(a => a.status !== 'Ausente').length;
       const absent = state.attendance.filter(a => a.status === 'Ausente').length;
+      const total = present + absent;
+      const percent = total ? Math.round((present / total) * 100) : 0;
       makeChart('attendanceChart', 'doughnut', {
-        labels:['Presentes / con registro', 'Ausentes'],
+        labels:['Presentes', 'Ausentes'],
         datasets:[{
           data:[present, absent],
           borderWidth:0,
-          backgroundColor:[p.green, p.red],
-          hoverOffset:8
+          spacing: 3,
+          hoverOffset: 6,
+          backgroundColor:[p.green, p.red]
         }]
-      }, { cutout:'68%', scales:{} });
+      }, {
+        cutout:'74%',
+        plugins: {
+          legend: { position:'bottom', align:'center' },
+          centerLabel: { text: `${percent}%`, subtext: 'asistencia' }
+        },
+        scales:{}
+      });
 
       const salt = groupByDate(state.salt.filter(s=>s.type==='Salida'), 'qty').slice(-12);
+      const saltLabels = salt.map(([d]) => formatDate(d));
+      const saltValues = salt.map(([,v]) => v);
       makeChart('saltChart', 'line', {
-        labels: salt.map(([d])=>formatDate(d)),
+        labels: saltLabels,
         datasets:[{
           label:'Consumo de sal',
-          data:salt.map(([,v])=>v),
-          tension:.38,
+          data:saltValues,
+          tension:.42,
           fill:true,
           borderWidth:3,
           pointRadius:4,
-          pointHoverRadius:6,
+          pointHoverRadius:7,
+          pointBackgroundColor: p.panel,
+          pointBorderWidth: 3,
+          pointBorderColor: p.amber,
           borderColor:p.amber,
-          backgroundColor:document.body.classList.contains('theme-dark') ? 'rgba(251, 191, 36, .14)' : 'rgba(245, 158, 11, .12)',
-          pointBackgroundColor:p.amber,
-          pointBorderColor:document.body.classList.contains('theme-dark') ? '#0f172a' : '#ffffff'
+          backgroundColor(context) {
+            const chart = context.chart;
+            return buildGradient(chart, document.body.classList.contains('theme-dark')
+              ? ['rgba(251, 191, 36, .28)', 'rgba(251, 191, 36, .02)']
+              : ['rgba(245, 158, 11, .26)', 'rgba(245, 158, 11, .02)']);
+          }
         }]
-      }, { scales:{ y:{ beginAtZero:true, ticks:{ color:p.muted }, grid:{ color:p.grid } }, x:{ ticks:{ color:p.muted }, grid:{ color:p.grid } } } });
+      }, {
+        plugins: {
+          legend: { display: true }
+        },
+        scales:{
+          y:{ beginAtZero:true, ticks:{ color:p.muted }, grid:{ color:p.grid } },
+          x:{ ticks:{ color:p.muted }, grid:{ display:false } }
+        }
+      });
     }
 
     function renderProduction() {
